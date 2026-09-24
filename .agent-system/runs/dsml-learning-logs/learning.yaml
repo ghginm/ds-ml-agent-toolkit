@@ -1,0 +1,19 @@
+{
+  "schema_version": "0.1",
+  "run_ref": ".agent-system/runs/dsml-learning-logs/run.yaml",
+  "request": {
+    "kind": "toolkit_development",
+    "topics": [
+      "run_logging",
+      "agent_learning"
+    ],
+    "deliverable": "code"
+  },
+  "routing": {
+    "skill": "execute-dsml-task",
+    "mode": "diagnose",
+    "initial_mode": null,
+    "corrected": false
+  },
+  "signals": []
+}

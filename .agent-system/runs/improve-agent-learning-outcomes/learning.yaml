@@ -1,0 +1,36 @@
+{
+  "schema_version": "0.3",
+  "timestamp": "2026-09-21",
+  "toolkit_version": "0.4.5",
+  "run_ref": ".agent-system/runs/improve-agent-learning-outcomes/run.yaml",
+  "request": {
+    "kind": "implementation",
+    "topics": [
+      "learning-loop",
+      "run-logging"
+    ],
+    "deliverable": "toolkit-change"
+  },
+  "routing": {
+    "skill": "execute-dsml-task",
+    "mode": "diagnose",
+    "initial_skill": null,
+    "initial_mode": null,
+    "corrected": false
+  },
+  "outcome": {
+    "execution": "completed",
+    "user_outcome": "unknown",
+    "reason_tags": []
+  },
+  "signals": [
+    {
+      "type": "learning_contract_gap",
+      "scope": "kit",
+      "importance": "high",
+      "summary": "Tracked runs could complete technically without recording user rework or reusable agent-workflow quality failures.",
+      "suggested_change": "Separate execution from user outcome and require sparse project-versus-kit learning extraction at finalization.",
+      "evidence_ref": ".agent-system/runs/improve-agent-learning-outcomes/run.yaml#knowledge"
+    }
+  ]
+}

@@ -1,0 +1,209 @@
+{
+  "schema_version": "0.1",
+  "task": {
+    "id": "dsml-natural-language-routing",
+    "mode": "tracked",
+    "goal": "Route ordinary natural-language DS/ML requests through the applicable core skill contract without requiring a toolkit, skill, or mode prefix.",
+    "scope": [
+      "Shared runtime routing invariant.",
+      "Deterministic analyze-dsml-project report-mode contract.",
+      "Short human-facing usage guidance.",
+      "Synthetic routing evals, validator assertions, unit coverage, and generated overlay."
+    ],
+    "non_goals": [
+      "A separate routing service, embeddings, a large taxonomy, or project-specific forecasting logic.",
+      "Duplicating detailed sub-mode rules into repository-level instructions.",
+      "Publishing a new toolkit release."
+    ],
+    "constraints": [
+      "Preserve the three-skill harness-neutral architecture.",
+      "Use only synthetic non-sensitive eval evidence.",
+      "Keep the human-facing guide short and example-based."
+    ],
+    "budget": {},
+    "evaluation_plan": [
+      "Run the focused routing contract test.",
+      "Build and validate the deterministic project overlay.",
+      "Run source validation and the complete unit suite."
+    ],
+    "acceptance": [
+      "Runtime instructions require loading the likely skill contract before mode selection.",
+      "Formal Markdown/PDF technical research reports always route to analyze-dsml-project deep-audit.",
+      "The required five natural-language routes and PDF paraphrases are covered without internal boilerplate.",
+      "Source, overlay, and unit validations pass."
+    ],
+    "expected_outputs": [
+      ".agent-system/templates/AGENTS.dsml.template.md",
+      ".agents/skills/analyze-dsml-project/SKILL.md",
+      ".agent-system/HOW_TO_USE_DSML_AGENT.md",
+      "evals/cases/behavioral-cases.json",
+      "tests/test_validate_kit.py",
+      "dist/project-overlay"
+    ]
+  },
+  "policy": {
+    "policy_ref": ".agent-system/policy/capability-policy.yaml",
+    "data_classification": "public",
+    "allowed_actions": [
+      "Read and edit the authorized source repository.",
+      "Run local deterministic build, validation, and unit-test commands.",
+      "Use only synthetic evaluation evidence."
+    ],
+    "approval_gates": [],
+    "authorization_boundary": [
+      "No production systems, customer data, external mutation, commit, push, or release."
+    ]
+  },
+  "provenance": {
+    "repository": {
+      "revision": null,
+      "working_tree": "Workspace is not initialized as a Git repository; files were inspected directly before editing.",
+      "diff_ref": null
+    },
+    "project_map_version": null,
+    "environment": {
+      "host": "WSL",
+      "python": "3.12.3"
+    },
+    "inputs": [
+      {
+        "kind": "implementation brief",
+        "ref": "attachment:1.txt",
+        "classification": "public"
+      },
+      {
+        "kind": "synthetic evaluation data",
+        "ref": "evals/fixtures/synthetic-fixtures.json",
+        "classification": "synthetic"
+      }
+    ],
+    "versions": {
+      "toolkit": "0.3.0"
+    },
+    "seeds": []
+  },
+  "execution": {
+    "tools": [
+      "Codex file patching",
+      "Git patch application",
+      "Python standard library"
+    ],
+    "commands": [
+      {
+        "id": "focused-routing-test",
+        "command": "python3 -B -m unittest tests.test_validate_kit.ValidateKitTests.test_natural_language_routing_contract_and_cases -v",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:focused-routing-test",
+        "sanitized_summary": "The focused natural-language routing contract test passed."
+      },
+      {
+        "id": "build-overlay",
+        "command": "python3 -B tooling/build-overlay.py",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:final-build",
+        "sanitized_summary": "The project overlay was rebuilt deterministically."
+      },
+      {
+        "id": "source-validation",
+        "command": "python3 -B tooling/validate-kit.py",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:final-source-validation",
+        "sanitized_summary": "Source toolkit validation passed with 42 behavioral cases and 34 fixtures."
+      },
+      {
+        "id": "overlay-validation",
+        "command": "python3 -B tooling/validate-kit.py --overlay dist/project-overlay",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:final-overlay-validation",
+        "sanitized_summary": "Generated overlay validation passed after source line endings were normalized."
+      },
+      {
+        "id": "unit-tests",
+        "command": "python3 -B -m unittest discover -s tests -v",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:final-unit-tests",
+        "sanitized_summary": "All 107 unit and synthetic installed-project tests passed."
+      }
+    ],
+    "changed_files": [
+      ".agent-system/templates/AGENTS.dsml.template.md",
+      ".agents/skills/analyze-dsml-project/SKILL.md",
+      ".agent-system/DSML_AGENT_KIT.md",
+      ".agent-system/HOW_TO_USE_DSML_AGENT.md",
+      ".agent-system/feedback/2026-09-13_pdf-report-routing.yaml",
+      ".agent-system/runs/dsml-natural-language-routing/run.yaml",
+      "tooling/build-overlay.py",
+      "tooling/validate-kit.py",
+      "evals/cases/behavioral-cases.json",
+      "evals/rubrics/behavioral-rubric.json",
+      "tests/test_validate_kit.py",
+      "dist/project-overlay"
+    ]
+  },
+  "results": {
+    "status": "completed",
+    "tests": [
+      {
+        "name": "natural-language routing regression",
+        "status": "passed",
+        "command_ref": "focused-routing-test",
+        "evidence_ref": "terminal:focused-routing-test"
+      },
+      {
+        "name": "source toolkit validation",
+        "status": "passed",
+        "command_ref": "source-validation",
+        "evidence_ref": "terminal:final-source-validation"
+      },
+      {
+        "name": "generated overlay validation",
+        "status": "passed",
+        "command_ref": "overlay-validation",
+        "evidence_ref": "terminal:final-overlay-validation"
+      },
+      {
+        "name": "unit and synthetic installed-project suite",
+        "status": "passed",
+        "command_ref": "unit-tests",
+        "evidence_ref": "terminal:final-unit-tests"
+      }
+    ],
+    "metrics": [],
+    "artifacts": [
+      {
+        "kind": "generated project overlay",
+        "ref": "dist/project-overlay",
+        "classification": "public"
+      },
+      {
+        "kind": "synthetic behavioral routing suite",
+        "ref": "evals/cases/behavioral-cases.json",
+        "classification": "synthetic"
+      }
+    ],
+    "decision": "not_applicable"
+  },
+  "knowledge": {
+    "verified_facts": [
+      "The runtime template now requires skill-contract loading before sub-mode selection.",
+      "The analysis contract deterministically routes requested Markdown/PDF technical research reports to deep-audit.",
+      "Eight added cases cover the five requested routes and three additional PDF paraphrases without internal routing boilerplate.",
+      "The generated overlay includes the 15-line human usage guide."
+    ],
+    "assumptions": [],
+    "remaining_uncertainty": [
+      "Deterministic contracts and eval structure do not by themselves prove every external harness will follow the route; no separate blind live-agent replay was run.",
+      "No Git revision or diff is available because this workspace is not initialized as a Git repository."
+    ]
+  }
+}

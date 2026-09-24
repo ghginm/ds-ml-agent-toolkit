@@ -1,0 +1,241 @@
+{
+  "schema_version": "0.1",
+  "task": {
+    "id": "stabilize-dsml-report-synthesis",
+    "mode": "tracked",
+    "goal": "Implement a normalized analysis state, dedicated report composition, structural QA, and visual PDF QA for stable cross-project DS/ML technical reports.",
+    "scope": [
+      "Technical-report analysis/composition boundary.",
+      "Normalized analysis state and synthesis gate.",
+      "Deterministic structural QA and A4 PDF visual-QA workflow.",
+      "Cross-project synthetic report evals and generated overlay."
+    ],
+    "non_goals": [
+      "Change deep-audit routing or weaken audit evidence requirements.",
+      "Add a database, workflow engine, or renderer dependency."
+    ],
+    "constraints": [
+      "Use only synthetic eval data.",
+      "Keep the harness-neutral core and preserve deep-audit behavior.",
+      "Do not claim visual QA without image inspection."
+    ],
+    "budget": {},
+    "evaluation_plan": [
+      "Validate the new skill.",
+      "Run cross-project structural tests.",
+      "Build and validate source and overlay.",
+      "Run the complete unit and onboarding suite.",
+      "Smoke-test PDF page rendering and contact-sheet generation."
+    ],
+    "acceptance": [
+      "Stable report skeleton and synthesis gate are enforced by deterministic tests while deep-audit routing remains distinct."
+    ],
+    "expected_outputs": [
+      ".agents/skills/compose-dsml-report",
+      ".agents/skills/analyze-dsml-project/references/technical-report.md",
+      "tests/test_report_composition.py",
+      "evals/cases/report-composition-cases.json",
+      "dist/project-overlay"
+    ]
+  },
+  "policy": {
+    "policy_ref": ".agent-system/policy/capability-policy.yaml",
+    "data_classification": "public",
+    "allowed_actions": [
+      "Read and edit the authorized source repository.",
+      "Run local deterministic build, validation, and synthetic smoke-test commands.",
+      "Modify released skills after explicit human maintenance approval."
+    ],
+    "approval_gates": [],
+    "authorization_boundary": [
+      "No production systems, sensitive data, remote mutation, commit, push, or release publication.",
+      "Released-skill maintenance proceeded only after explicit user approval recorded as user:explicit-YES."
+    ]
+  },
+  "provenance": {
+    "repository": {
+      "revision": null,
+      "working_tree": "Workspace is not a Git repository; changes were inspected from the filesystem.",
+      "diff_ref": null
+    },
+    "project_map_version": null,
+    "environment": {
+      "host": "WSL",
+      "python": "3.12",
+      "pdf_renderer": "Ghostscript",
+      "image_viewer": "unavailable due sandbox helper failure"
+    },
+    "inputs": [
+      {
+        "kind": "implementation brief",
+        "ref": "user attachment Pasted text.txt",
+        "classification": "public"
+      },
+      {
+        "kind": "synthetic report evals",
+        "ref": "evals/cases/report-composition-cases.json",
+        "classification": "synthetic"
+      }
+    ],
+    "versions": {
+      "toolkit": "0.4.4"
+    },
+    "seeds": []
+  },
+  "execution": {
+    "tools": [
+      "Python standard library",
+      "Ghostscript",
+      "ImageMagick montage",
+      "Codex image viewer (failed to open local artifact)"
+    ],
+    "commands": [
+      {
+        "id": "skill-validation",
+        "command": "python3 -B /mnt/c/Users/ghgin/.codex/skills/.system/skill-creator/scripts/quick_validate.py .agents/skills/compose-dsml-report",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:skill-validation",
+        "sanitized_summary": "Skill is valid."
+      },
+      {
+        "id": "build-overlay",
+        "command": "python3 -B tooling/build-overlay.py",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:final-validation",
+        "sanitized_summary": "PASS: project overlay built."
+      },
+      {
+        "id": "source-validation",
+        "command": "python3 -B tooling/validate-kit.py --source",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:final-validation",
+        "sanitized_summary": "PASS: source toolkit valid; 59 behavioral cases and 39 fixtures validated."
+      },
+      {
+        "id": "overlay-validation",
+        "command": "python3 -B tooling/validate-kit.py --overlay dist/project-overlay",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:final-validation",
+        "sanitized_summary": "PASS: overlay toolkit-owned files are valid."
+      },
+      {
+        "id": "unit-tests",
+        "command": "python3 -B -m unittest discover -s tests -v",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:final-unit-tests",
+        "sanitized_summary": "119 tests passed."
+      },
+      {
+        "id": "pdf-qa-smoke",
+        "command": "python3 -B .agents/skills/compose-dsml-report/scripts/qa_dsml_report_pdf.py prepare smoke.pdf --output-dir qa",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": ".agent-system/runs/stabilize-dsml-report-synthesis/pdf-smoke/qa/qa.json",
+        "sanitized_summary": "Rendered two pages, created a contact sheet, and flagged the intentionally sparse second page; visual status remains not_performed."
+      }
+    ],
+    "changed_files": [
+      "VERSION",
+      "README.md",
+      ".agent-system/docs/DSML_AGENT_KIT.md",
+      ".agent-system/docs/HOW_TO_USE_DSML_AGENT.md",
+      ".agent-system/templates/learning.template.yaml",
+      ".agents/skills/analyze-dsml-project/SKILL.md",
+      ".agents/skills/analyze-dsml-project/references/technical-report.md",
+      ".agents/skills/analyze-dsml-project/references/deep-audit.md",
+      ".agents/skills/compose-dsml-report",
+      "evals/cases/report-composition-cases.json",
+      "tests/test_report_composition.py",
+      "tests/test_validate_kit.py",
+      "tooling/onboard-project.py",
+      "tooling/validate-kit.py",
+      "dist/project-overlay",
+      ".agent-system/runs/stabilize-dsml-report-synthesis"
+    ]
+  },
+  "results": {
+    "status": "completed",
+    "tests": [
+      {
+        "name": "new skill validation",
+        "status": "passed",
+        "command_ref": "skill-validation",
+        "evidence_ref": "terminal:skill-validation"
+      },
+      {
+        "name": "source toolkit validation",
+        "status": "passed",
+        "command_ref": "source-validation",
+        "evidence_ref": "terminal:final-validation"
+      },
+      {
+        "name": "generated overlay validation",
+        "status": "passed",
+        "command_ref": "overlay-validation",
+        "evidence_ref": "terminal:final-validation"
+      },
+      {
+        "name": "unit and synthetic installed-project suite",
+        "status": "passed",
+        "command_ref": "unit-tests",
+        "evidence_ref": "terminal:final-unit-tests"
+      },
+      {
+        "name": "PDF geometry/contact-sheet smoke",
+        "status": "passed",
+        "command_ref": "pdf-qa-smoke",
+        "evidence_ref": ".agent-system/runs/stabilize-dsml-report-synthesis/pdf-smoke/qa/qa.json"
+      }
+    ],
+    "metrics": [],
+    "artifacts": [
+      {
+        "kind": "report composition skill",
+        "ref": ".agents/skills/compose-dsml-report",
+        "classification": "public"
+      },
+      {
+        "kind": "generated project overlay",
+        "ref": "dist/project-overlay",
+        "classification": "public"
+      },
+      {
+        "kind": "cross-project synthetic evals",
+        "ref": "evals/cases/report-composition-cases.json",
+        "classification": "synthetic"
+      },
+      {
+        "kind": "PDF QA smoke output",
+        "ref": ".agent-system/runs/stabilize-dsml-report-synthesis/pdf-smoke/qa",
+        "classification": "synthetic"
+      }
+    ],
+    "decision": "not_applicable"
+  },
+  "knowledge": {
+    "verified_facts": [
+      "The previous technical-report template explicitly allowed reordering and omission, leaving synthesis to free-form model judgment.",
+      "Technical reports now hand normalized state through an explicit synthesis gate to a dedicated composer.",
+      "Structural QA rejects missing or reordered top-level sections, late findings, ungrouped opportunities, missing decisions, missing low-hanging fruit, and premature provenance sections.",
+      "PDF QA renders every page and cannot record a visual pass until a separate review command is used.",
+      "Deep-audit routing remains selected only by explicit audit intent."
+    ],
+    "assumptions": [],
+    "remaining_uncertainty": [
+      "The local image viewer failed, so the synthetic PDF contact sheet was generated but not visually inspected; visual QA is not claimed.",
+      "No existing rendered technical-report fixture or verified Markdown-to-PDF renderer was present, so an existing report could not be regenerated.",
+      "Behavioral eval contracts do not prove every external agent will follow the workflow."
+    ]
+  }
+}

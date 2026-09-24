@@ -1,0 +1,255 @@
+{
+  "schema_version": "0.1",
+  "task": {
+    "id": "dsml-agent-kit-v0.1",
+    "mode": "tracked",
+    "goal": "Create a portable, safety-first DS/ML agent toolkit with three core skills, governance contracts, thin harness adapters, and deterministic synthetic evaluations.",
+    "scope": [
+      "Repository-local toolkit content under .agents, .agent-system, adapters, evals, tooling, and tests."
+    ],
+    "non_goals": [
+      "Product-specific deployment or credentials.",
+      "Automatic modification of protected policy or released skills.",
+      "Live installation into managed Codex or Copilot environments."
+    ],
+    "constraints": [
+      "Exactly three core Agent Skills.",
+      "Harness-neutral DS/ML workflow logic.",
+      "Default-deny sensitive access and mutation.",
+      "Only synthetic non-sensitive evaluation fixtures.",
+      "The active source-toolkit policy is authorized only for this implementation repository and must not be copied as target-project authorization."
+    ],
+    "evaluation_plan": [
+      "Run the deterministic repository validator.",
+      "Run mutation-oriented unit tests.",
+      "Validate frontmatter and the run schema with external parsers already present in the environment.",
+      "Run independent blind behavioral forward tests and an independent final audit."
+    ],
+    "acceptance": [
+      "All required portable skills, contracts, templates, adapters, and evaluation artifacts exist and are coherent.",
+      "The deterministic validator passes exactly three skills and all 23 synthetic cases and fixtures.",
+      "All unit tests pass.",
+      "Independent forward tests show correct routing, safety behavior, and verdict semantics.",
+      "Independent final reviewers report no blocking current findings."
+    ],
+    "expected_outputs": [
+      "README.md",
+      ".agents/skills",
+      ".agent-system",
+      "adapters",
+      "evals",
+      "tooling/validate-kit.py",
+      "tests/test_validate_kit.py"
+    ]
+  },
+  "policy": {
+    "policy_ref": ".agent-system/policy/capability-policy.yaml",
+    "data_classification": "public",
+    "allowed_actions": [
+      "Read and edit the empty authorized workspace.",
+      "Run local deterministic validators, tests, and static checks.",
+      "Use only synthetic evaluation evidence.",
+      "Perform read-only official documentation research and independent review."
+    ],
+    "approval_gates": [],
+    "authorization_boundary": [
+      "No secrets, customer data, production systems, external mutation, repository commit, or push."
+    ]
+  },
+  "provenance": {
+    "repository": {
+      "revision": null,
+      "working_tree": "Workspace was not a Git repository; implementation created from an empty directory.",
+      "diff_ref": null
+    },
+    "project_map_version": null,
+    "environment": {
+      "host": "WSL",
+      "python": "3.12.3"
+    },
+    "inputs": [
+      {
+        "kind": "implementation brief",
+        "ref": "attachment:hermes-dsml-agent-kit-prompt-2.md",
+        "classification": "public"
+      },
+      {
+        "kind": "evaluation data",
+        "ref": "evals/fixtures/synthetic-fixtures.json",
+        "classification": "synthetic"
+      }
+    ],
+    "versions": {
+      "toolkit": "0.1"
+    },
+    "seeds": []
+  },
+  "execution": {
+    "tools": [
+      "Hermes file tools",
+      "Python standard library",
+      "PyYAML",
+      "jsonschema",
+      "Hermes isolated subagents"
+    ],
+    "commands": [
+      {
+        "id": "validator",
+        "command": "python3 -B tooling/validate-kit.py",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:final-validator",
+        "sanitized_summary": "PASS: exactly 3 skills; policy/run contracts valid; links/resources clean; 23 behavioral cases and 23 fixtures validated."
+      },
+      {
+        "id": "unit-tests",
+        "command": "python3 -B -m unittest discover -s tests -v",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:final-unit-tests",
+        "sanitized_summary": "30 tests passed, including clean-copy execution of both documented commands."
+      }
+    ],
+    "changed_files": [
+      ".gitignore",
+      "AGENTS.md",
+      "README.md",
+      ".agents/skills/analyze-dsml-project/SKILL.md",
+      ".agents/skills/analyze-dsml-project/assets/report-style.css",
+      ".agents/skills/analyze-dsml-project/assets/report-template.md",
+      ".agents/skills/analyze-dsml-project/references/deep-audit.md",
+      ".agents/skills/analyze-dsml-project/references/orientation.md",
+      ".agents/skills/execute-dsml-task/SKILL.md",
+      ".agents/skills/execute-dsml-task/references/aml.md",
+      ".agents/skills/execute-dsml-task/references/develop.md",
+      ".agents/skills/execute-dsml-task/references/diagnose.md",
+      ".agents/skills/validate-dsml-result/SKILL.md",
+      ".agents/skills/validate-dsml-result/references/aml.md",
+      ".agents/skills/validate-dsml-result/references/review-surfaces.md",
+      ".agent-system/policy/capability-policy.template.yaml",
+      ".agent-system/policy/capability-policy.yaml",
+      ".agent-system/runs/dsml-agent-kit-v0.1/run.yaml",
+      ".agent-system/schemas/run.schema.json",
+      ".agent-system/templates/AGENTS.dsml.template.md",
+      ".agent-system/templates/PROJECT_MAP.template.md",
+      ".agent-system/templates/finding-report.template.md",
+      ".agent-system/templates/improvement-candidate.template.md",
+      ".agent-system/templates/run.template.yaml",
+      "adapters/README.md",
+      "adapters/codex/AGENTS.fragment.md",
+      "adapters/copilot/copilot-instructions.fragment.md",
+      "adapters/hermes/hermes-project.fragment.md",
+      "evals/README.md",
+      "evals/cases/behavioral-cases.json",
+      "evals/fixtures/synthetic-fixtures.json",
+      "evals/rubrics/behavioral-rubric.json",
+      "tests/test_validate_kit.py",
+      "tooling/validate-kit.py"
+    ]
+  },
+  "results": {
+    "status": "completed",
+    "tests": [
+      {
+        "name": "deterministic repository validation",
+        "status": "passed",
+        "command_ref": "validator",
+        "evidence_ref": "terminal:final-validator",
+        "sanitized_summary": "All structural, policy, schema, eval, resource, hygiene, and semantic checks passed."
+      },
+      {
+        "name": "mutation-oriented unit suite",
+        "status": "passed",
+        "command_ref": "unit-tests",
+        "evidence_ref": "terminal:final-unit-tests",
+        "sanitized_summary": "30 of 30 tests passed, including active-policy, whitespace-evidence, mutation, and clean-copy command probes."
+      },
+      {
+        "name": "external parser validation",
+        "status": "passed",
+        "evidence_ref": "terminal:external-parser-checks",
+        "sanitized_summary": "PyYAML parsed all three Agent Skills frontmatters; jsonschema Draft 2020-12 validated the schema, run template, and implementation run record."
+      },
+      {
+        "name": "implementation changed-file manifest reconciliation",
+        "status": "passed",
+        "evidence_ref": "terminal:changed-file-reconciliation",
+        "sanitized_summary": "The run record listed all 34 maintained and generated files exactly, with no missing or extra paths."
+      },
+      {
+        "name": "run-contract whitespace mutation probe",
+        "status": "passed",
+        "evidence_ref": "terminal:run-schema-whitespace-probe",
+        "sanitized_summary": "The bundled and external schema validators rejected whitespace-only identifiers, references, evidence fields, metric strings, and list entries; no unconstrained non-enum string leaf remained."
+      },
+      {
+        "name": "independent schema and active-policy review",
+        "status": "passed",
+        "evidence_ref": "hermes-delegation:deleg_74d84b07/task-0",
+        "sanitized_summary": "Independent verdict PASS for schema string-leaf and active-policy/approval probes; a later metric-provenance review identified an additional baseline artifact requirement that was subsequently fixed."
+      },
+      {
+        "name": "metric baseline provenance regression",
+        "status": "passed",
+        "command_ref": "unit-tests",
+        "evidence_ref": "terminal:final-unit-tests",
+        "sanitized_summary": "A non-null baseline with no artifact reference is rejected; an artifact-backed candidate and baseline pair is accepted."
+      },
+      {
+        "name": "independent final metric-provenance review",
+        "status": "passed",
+        "evidence_ref": "hermes-delegation:deleg_9425bcc2/task-0",
+        "sanitized_summary": "Independent verdict PASS: blank metric values and baselines, unbacked candidate or baseline values, and comparable evidence bypasses were rejected; the valid artifact-backed candidate-plus-baseline case passed."
+      },
+      {
+        "name": "blind behavioral forward tests",
+        "status": "passed",
+        "evidence_ref": "hermes-delegations:deleg_b7432ee8/tasks-0-4; 20260909_225957/post-revision; deleg_8b77c530/task-2",
+        "sanitized_summary": "Independent tests exercised orientation, diagnosis, leakage-safe validation, AML validation, routing, no-change handling, and verdict semantics. The final blind population-change case selected validate-dsml-result and returned REQUIRES_CHANGES because the candidate evaluated only 72% of the baseline population."
+      },
+      {
+        "name": "static high-risk pattern scan",
+        "status": "passed",
+        "evidence_ref": "terminal:static-pattern-scan",
+        "sanitized_summary": "No hard-coded secret assignment was found in maintained text; Python sources contained no shell=True, eval/exec call, or unsafe pickle-load pattern."
+      }
+    ],
+    "metrics": [],
+    "artifacts": [
+      {
+        "kind": "toolkit",
+        "ref": ".agents/skills",
+        "classification": "public"
+      },
+      {
+        "kind": "governance contracts",
+        "ref": ".agent-system",
+        "classification": "public"
+      },
+      {
+        "kind": "synthetic evaluation suite",
+        "ref": "evals",
+        "classification": "synthetic"
+      }
+    ],
+    "decision": "not_applicable"
+  },
+  "knowledge": {
+    "verified_facts": [
+      "Codex, GitHub Copilot/VS Code, and Hermes support the portable .agents/skills project layout.",
+      "Hermes project skills require an explicit project trust step.",
+      "The current toolkit has exactly three released core skills and 23 synthetic behavioral cases."
+    ],
+    "assumptions": [
+      "Consumers copy the portable policy template, templates, and schema together with .agents/skills, then create a separately approved target-project policy."
+    ],
+    "remaining_uncertainty": [
+      "Live discovery was not exercised inside managed Codex or Copilot environments.",
+      "No repository revision is available because the workspace is not initialized as Git.",
+      "Enterprise enforcement such as CODEOWNERS and CI remains target-repository policy rather than a portable toolkit artifact.",
+      "Opaque external evidence references require reviewer or harness resolution; the stdlib validator checks their presence, not the external system."
+    ]
+  }
+}

@@ -1,0 +1,160 @@
+{
+  "schema_version": "0.2",
+  "cases": [
+    {
+      "id": "model-feature-focus",
+      "prompt": "Create a report focused on model design and feature engineering.",
+      "expected": [
+        "Model and feature sections receive prominence.",
+        "No operations or governance section appears without relevant evidence."
+      ]
+    },
+    {
+      "id": "evaluation-focus",
+      "prompt": "Create a report on evaluation correctness and current performance.",
+      "expected": [
+        "Evaluation architecture leads.",
+        "Model implementation detail is compressed."
+      ]
+    },
+    {
+      "id": "iteration-semantics",
+      "prompt": "Compare iterations=1 with iterations=3 on the same evidence.",
+      "expected": [
+        "One-shot has one planned composition.",
+        "Three iterations contain two critique and targeted-revision cycles, not blind regeneration."
+      ]
+    },
+    {
+      "id": "visual-defect-repair",
+      "prompt": "Render a fixture with a material visual defect.",
+      "expected": [
+        "Visual QA records a named defect.",
+        "A later render verifies the repair before passing."
+      ]
+    },
+    {
+      "id": "duplicate-finding",
+      "prompt": "Compose from evidence that maps one finding to several possible taxonomies.",
+      "expected": [
+        "One canonical explanation exists.",
+        "Actions may refer to it without full repetition."
+      ]
+    },
+    {
+      "id": "sparse-table-layout",
+      "prompt": "Render sparse-page and pathological-table fixtures.",
+      "expected": [
+        "Preflight or visual review flags the defects.",
+        "Layout is revised and the final render is rechecked."
+      ]
+    },
+    {
+      "id": "late-evidence-targeting",
+      "prompt": "Add material evidence after the first draft.",
+      "expected": [
+        "State and plan revisions increment.",
+        "Only impacted sections are recomposed; no Additional Findings dump appears."
+      ]
+    },
+    {
+      "id": "feature-evidence-depth",
+      "prompt": "Create a technical report focused on features when importance and ablation artifacts exist.",
+      "expected": [
+        "Available feature evidence is inspected and interpreted, with attribution limits stated.",
+        "The report does not replace existing evidence with a generic recommendation to generate importance."
+      ]
+    },
+    {
+      "id": "model-runtime-depth",
+      "prompt": "Analyze model design when candidate comparisons, routing shares, and runtimes exist.",
+      "expected": [
+        "Models are compared on behavior, incremental value, stability, and cost rather than merely listed.",
+        "Architecture justification remains conditional on evaluation validity."
+      ]
+    },
+    {
+      "id": "evaluation-stability-depth",
+      "prompt": "Analyze evaluation when per-fold, per-origin, cohort, and baseline results exist.",
+      "expected": [
+        "At least one high-information stability or variation analysis is surfaced.",
+        "Aggregate metrics are contextualized rather than treated as sufficient."
+      ]
+    },
+    {
+      "id": "page-budget-depth",
+      "prompt": "Create the same technical analysis at 6-8 pages and 12-16 pages.",
+      "expected": [
+        "Both versions inspect the same relevant evidence surfaces.",
+        "The shorter version compresses presentation without reducing analytical depth."
+      ]
+    },
+    {
+      "id": "research-map-retention",
+      "prompt": "Create a normal technical research report with supported future opportunities and low-effort checks.",
+      "expected": [
+        "A compact Research & Improvement Map remains in the report.",
+        "Supported low-hanging fruit is distinct from larger research initiatives."
+      ]
+    },
+    {
+      "id": "standard-explanatory-depth",
+      "prompt": "Create a standard report on model design, features, evaluation, and current issues.",
+      "expected": [
+        "Material components explain mechanism, applicability, failure modes, empirical support status, and implication where relevant.",
+        "Inventory tables are followed by compact analytical interpretation rather than filler prose."
+      ]
+    },
+    {
+      "id": "claim-type-separation",
+      "prompt": "Describe a plausible feature family for which no ablation exists.",
+      "expected": [
+        "Implementation fact, technical rationale, and project-specific empirical support remain distinct.",
+        "The report states that incremental contribution is unvalidated."
+      ]
+    },
+    {
+      "id": "iteration-two-semantic-depth",
+      "prompt": "Run iteration two on a report whose feature section is a detailed inventory table.",
+      "expected": [
+        "The review checks every semantic depth dimension rather than passing on table presence or word count.",
+        "A targeted revision adds missing interpretation and records the affected section."
+      ]
+    },
+    {
+      "id": "source-truth-consistency",
+      "prompt": "Render a complete report while preserving a shorter Markdown file.",
+      "expected": [
+        "Markdown/PDF semantic mismatch is detected.",
+        "Completion is blocked until the persisted Markdown contains the report's semantic content."
+      ]
+    },
+    {
+      "id": "low-information-density",
+      "prompt": "Render a six-page report with two pages containing only a few lines but broad bounding boxes.",
+      "expected": [
+        "Text-density checks identify underused pages even when geometry spans the page.",
+        "The target page count does not pass until useful analysis is integrated or the report is shortened."
+      ]
+    }
+  ],
+  "invariants": [
+    "reviewed report plan precedes long-form composition",
+    "stable technical-report skeleton with evidence-adaptive subsections",
+    "compact executive summary for substantial reports",
+    "one canonical explanation per material finding",
+    "evidence-linked recommendations",
+    "no empty framework sections or discovery chronology",
+    "mandatory content-depth revision in iteration two",
+    "semantic depth review covers mechanism, conditions, failure, evidence status, and implication",
+    "verified fact, technical rationale, and project evidence remain distinct",
+    "explicit focus coverage before composition",
+    "significant inspected evidence mapped into report sections",
+    "page target changes composition, not investigation depth",
+    "Research & Improvement Map retained when opportunities exist",
+    "visual defects cause repair and verification",
+    "editable semantic source matches the rendered PDF",
+    "page density combines geometry and extracted information volume",
+    "clean final deliverables"
+  ]
+}

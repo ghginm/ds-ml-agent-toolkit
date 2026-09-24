@@ -1,0 +1,234 @@
+{
+  "schema_version": "0.1",
+  "task": {
+    "id": "fix-dsml-report-contract-gaps",
+    "mode": "tracked",
+    "goal": "Close the four re-verification gaps in DS/ML report synthesis",
+    "scope": [
+      "Blank-page PDF geometry diagnostics.",
+      "Opportunity-type behavioral semantics.",
+      "Rendered PDF-density regression coverage across four report archetypes.",
+      "Deep-audit wording, release metadata, and generated overlay."
+    ],
+    "non_goals": [
+      "Change the stable report skeleton or technical-report routing.",
+      "Claim human visual quality review from automated geometry checks."
+    ],
+    "constraints": [
+      "Use only synthetic PDF and report test data.",
+      "Preserve deep-audit behavior and the harness-neutral core.",
+      "Modify released skills only under the user's explicit maintenance authorization."
+    ],
+    "budget": {},
+    "evaluation_plan": [
+      "Run focused report-composition and PDF-QA tests.",
+      "Validate the updated composition skill.",
+      "Rebuild and validate source and overlay.",
+      "Run the complete unit suite."
+    ],
+    "acceptance": [
+      "Blank pages are explicit, opportunity types have behavioral definitions, all archetypes exercise rendered PDF QA, stale audit wording is corrected, and required validations pass"
+    ],
+    "expected_outputs": [
+      ".agents/skills/compose-dsml-report/scripts/qa_dsml_report_pdf.py",
+      ".agents/skills/compose-dsml-report/references/analysis-state.md",
+      ".agents/skills/analyze-dsml-project/references/deep-audit.md",
+      "tests/test_report_composition.py",
+      "dist/project-overlay"
+    ]
+  },
+  "policy": {
+    "policy_ref": ".agent-system/policy/capability-policy.yaml",
+    "data_classification": "public",
+    "allowed_actions": [
+      "Read and edit the authorized source repository.",
+      "Run local deterministic builds, validation, and synthetic PDF tests.",
+      "Modify released skills after explicit human maintenance approval."
+    ],
+    "approval_gates": [],
+    "authorization_boundary": [
+      "No production systems, sensitive data, remote mutation, commit, push, or release publication.",
+      "Released-skill maintenance was explicitly requested by the user."
+    ]
+  },
+  "provenance": {
+    "repository": {
+      "revision": null,
+      "working_tree": "Workspace is not a Git repository; changes were inspected from the filesystem.",
+      "diff_ref": null
+    },
+    "project_map_version": null,
+    "environment": {
+      "host": "WSL",
+      "python": "3.12",
+      "pdf_renderer": "Ghostscript",
+      "contact_sheet_tool": "ImageMagick montage"
+    },
+    "inputs": [
+      {
+        "kind": "validation findings",
+        "ref": ".agent-system/runs/reverify-dsml-report-contract/run.yaml",
+        "classification": "public"
+      },
+      {
+        "kind": "synthetic report archetypes",
+        "ref": "evals/cases/report-composition-cases.json",
+        "classification": "synthetic"
+      }
+    ],
+    "versions": {
+      "toolkit": "0.4.5"
+    },
+    "seeds": []
+  },
+  "execution": {
+    "tools": [
+      "Python standard library",
+      "Ghostscript",
+      "ImageMagick montage",
+      "repository validators"
+    ],
+    "commands": [
+      {
+        "id": "focused-report-tests",
+        "command": "python3 -B -m unittest tests.test_report_composition -v",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:focused-report-tests",
+        "sanitized_summary": "Six tests passed, including blank-page PDF detection and rendered density QA for four archetypes."
+      },
+      {
+        "id": "build-overlay",
+        "command": "python3 -B tooling/build-overlay.py",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:distribution-validation",
+        "sanitized_summary": "PASS: project overlay built."
+      },
+      {
+        "id": "source-validation",
+        "command": "python3 -B tooling/validate-kit.py --source",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:distribution-validation",
+        "sanitized_summary": "PASS: source toolkit valid; 59 behavioral cases and 39 fixtures validated."
+      },
+      {
+        "id": "overlay-validation",
+        "command": "python3 -B tooling/validate-kit.py --overlay dist/project-overlay",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:distribution-validation",
+        "sanitized_summary": "PASS: overlay toolkit-owned files are valid."
+      },
+      {
+        "id": "skill-validation",
+        "command": "python3 -B /mnt/c/Users/ghgin/.codex/skills/.system/skill-creator/scripts/quick_validate.py .agents/skills/compose-dsml-report",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:distribution-validation",
+        "sanitized_summary": "Skill is valid."
+      },
+      {
+        "id": "full-unit-tests",
+        "command": "python3 -B -m unittest discover -s tests -v",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:full-unit-tests",
+        "sanitized_summary": "121 tests passed."
+      }
+    ],
+    "changed_files": [
+      "VERSION",
+      "README.md",
+      ".agent-system/templates/learning.template.yaml",
+      ".agents/skills/analyze-dsml-project/SKILL.md",
+      ".agents/skills/analyze-dsml-project/references/deep-audit.md",
+      ".agents/skills/autoresearch/SKILL.md",
+      ".agents/skills/compose-dsml-report/SKILL.md",
+      ".agents/skills/compose-dsml-report/references/analysis-state.md",
+      ".agents/skills/compose-dsml-report/scripts/qa_dsml_report_pdf.py",
+      ".agents/skills/execute-dsml-task/SKILL.md",
+      ".agents/skills/validate-dsml-result/SKILL.md",
+      "tests/test_report_composition.py",
+      "tests/test_validate_kit.py",
+      "dist/project-overlay",
+      ".agent-system/runs/fix-dsml-report-contract-gaps"
+    ]
+  },
+  "results": {
+    "status": "completed",
+    "tests": [
+      {
+        "name": "focused report and PDF QA regression suite",
+        "status": "passed",
+        "command_ref": "focused-report-tests",
+        "evidence_ref": "terminal:focused-report-tests"
+      },
+      {
+        "name": "source toolkit validation",
+        "status": "passed",
+        "command_ref": "source-validation",
+        "evidence_ref": "terminal:distribution-validation"
+      },
+      {
+        "name": "generated overlay validation",
+        "status": "passed",
+        "command_ref": "overlay-validation",
+        "evidence_ref": "terminal:distribution-validation"
+      },
+      {
+        "name": "composition skill validation",
+        "status": "passed",
+        "command_ref": "skill-validation",
+        "evidence_ref": "terminal:distribution-validation"
+      },
+      {
+        "name": "complete unit suite",
+        "status": "passed",
+        "command_ref": "full-unit-tests",
+        "evidence_ref": "terminal:full-unit-tests"
+      }
+    ],
+    "metrics": [],
+    "artifacts": [
+      {
+        "kind": "updated composition skill",
+        "ref": ".agents/skills/compose-dsml-report",
+        "classification": "public"
+      },
+      {
+        "kind": "generated project overlay",
+        "ref": "dist/project-overlay",
+        "classification": "public"
+      },
+      {
+        "kind": "maintenance run record",
+        "ref": ".agent-system/runs/fix-dsml-report-contract-gaps/run.yaml",
+        "classification": "public"
+      }
+    ],
+    "decision": "not_applicable"
+  },
+  "knowledge": {
+    "verified_facts": [
+      "Blank PDF pages now receive an explicit blank_page warning and are not mislabeled as sparse or near-edge pages.",
+      "FIX, MEASURE, EXPERIMENT, and IMPROVE now have distinct evidence-to-action definitions.",
+      "Each of the four synthetic report archetypes exercises the real Ghostscript render, density assessment, and contact-sheet path.",
+      "Deep-audit guidance no longer refers to the removed shared report template.",
+      "The toolkit and generated overlay are synchronized at version 0.4.5.",
+      "All 121 unit tests pass."
+    ],
+    "assumptions": [],
+    "remaining_uncertainty": [
+      "The cross-project PDF fixtures are synthetic geometry proxies, not PDFs produced by a Markdown-to-PDF renderer.",
+      "Automated tests generate contact sheets but do not constitute human visual inspection; visual review remains not_performed."
+    ]
+  }
+}

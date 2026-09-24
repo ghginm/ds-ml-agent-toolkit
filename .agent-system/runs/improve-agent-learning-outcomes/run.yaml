@@ -1,0 +1,193 @@
+{
+  "schema_version": "0.1",
+  "task": {
+    "id": "improve-agent-learning-outcomes",
+    "mode": "tracked",
+    "goal": "Improve tracked-run learning records so they capture compact project and toolkit signals plus separate execution and user outcomes for future dist improvements.",
+    "scope": [
+      "Learning schema, template, initializer, and validation semantics.",
+      "Tracked-workflow finalization instructions and concise learning-loop documentation.",
+      "Synthetic behavioral evals, focused unit coverage, and generated project overlay."
+    ],
+    "non_goals": [
+      "Build a collector, analytics service, or automatic toolkit-rewrite subsystem.",
+      "Change unrelated project behavior or historical learning records."
+    ],
+    "constraints": [
+      "Preserve run.yaml as detailed evidence and learning.yaml as compact aggregation input.",
+      "Keep historical learning schema versions valid.",
+      "Use only synthetic eval data and preserve the harness-neutral core."
+    ],
+    "budget": {},
+    "evaluation_plan": [
+      "Run focused learning schema, initializer, and fixture tests.",
+      "Build the generated overlay.",
+      "Run source validation and the complete unit suite."
+    ],
+    "acceptance": [
+      "Learning schema and initializer support compact execution and user outcome fields without duplicating run evidence.",
+      "Instructions and behavioral evals require meaningful kit-level learning extraction while preserving project-only signals and quiet clean runs.",
+      "Source validation and the full unit suite pass."
+    ],
+    "expected_outputs": [
+      ".agent-system/schemas/learning.schema.json",
+      ".agent-system/templates/learning.template.yaml",
+      "tooling/create-run.py",
+      "tooling/validate-kit.py",
+      "dist/project-overlay"
+    ]
+  },
+  "policy": {
+    "policy_ref": ".agent-system/policy/capability-policy.yaml",
+    "data_classification": "public",
+    "allowed_actions": [
+      "Read and edit the authorized source repository.",
+      "Run local deterministic build, validation, and synthetic test commands."
+    ],
+    "approval_gates": [],
+    "authorization_boundary": [
+      "No sensitive data, remote mutation, commit, push, deployment, or release publication.",
+      "Toolkit release/version metadata remains unchanged."
+    ]
+  },
+  "provenance": {
+    "repository": {
+      "revision": null,
+      "working_tree": "Workspace is not a Git repository; changes were inspected from the filesystem.",
+      "diff_ref": null
+    },
+    "project_map_version": null,
+    "environment": {
+      "host": "WSL",
+      "python": "3.12"
+    },
+    "inputs": [
+      {
+        "kind": "implementation brief",
+        "ref": "user attachment Pasted text.txt",
+        "classification": "public"
+      }
+    ],
+    "versions": {
+      "toolkit": "0.4.5"
+    },
+    "seeds": []
+  },
+  "execution": {
+    "tools": [
+      "Python standard library",
+      "GNU patch"
+    ],
+    "commands": [
+      {
+        "id": "focused-learning-tests",
+        "command": "python3 -B -m unittest tests.test_validate_kit.ValidateKitTests.test_learning_v03_separates_execution_and_user_outcome_and_mixes_scopes tests.test_validate_kit.ValidateKitTests.test_learning_v03_allows_project_only_and_clean_outcomes tests.test_validate_kit.ValidateKitTests.test_learning_v03_limits_compact_actionable_signals tests.test_validate_kit.ValidateKitTests.test_observed_learning_examples_are_compact_and_schema_valid tests.test_validate_kit.ValidateKitTests.test_create_run_initializes_run_and_learning_records -v",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:focused-learning-tests",
+        "sanitized_summary": "Five focused learning schema, fixture, and initializer tests passed."
+      },
+      {
+        "id": "build-overlay",
+        "command": "python3 -B tooling/build-overlay.py",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:build-overlay",
+        "sanitized_summary": "Generated project overlay rebuilt successfully."
+      },
+      {
+        "id": "validate-kit",
+        "command": "python3 -B tooling/validate-kit.py",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:validate-kit",
+        "sanitized_summary": "Source toolkit valid with 60 behavioral cases and 40 synthetic fixtures."
+      },
+      {
+        "id": "unit-tests",
+        "command": "python3 -B -m unittest discover -s tests -v",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:unit-tests",
+        "sanitized_summary": "124 tests passed."
+      }
+    ],
+    "changed_files": [
+      ".agent-system/docs/LEARNING_LOOP.md",
+      ".agent-system/schemas/learning.schema.json",
+      ".agent-system/templates/learning.template.yaml",
+      ".agents/skills/analyze-dsml-project/SKILL.md",
+      ".agents/skills/autoresearch/SKILL.md",
+      ".agents/skills/execute-dsml-task/SKILL.md",
+      ".agents/skills/validate-dsml-result/SKILL.md",
+      "evals/cases/behavioral-cases.json",
+      "evals/fixtures/synthetic-fixtures.json",
+      "tests/test_validate_kit.py",
+      "tooling/create-run.py",
+      "tooling/validate-kit.py",
+      "dist/project-overlay",
+      ".agent-system/runs/improve-agent-learning-outcomes"
+    ]
+  },
+  "results": {
+    "status": "completed",
+    "tests": [
+      {
+        "name": "focused learning-contract tests",
+        "status": "passed",
+        "command_ref": "focused-learning-tests",
+        "evidence_ref": "terminal:focused-learning-tests"
+      },
+      {
+        "name": "source toolkit validation",
+        "status": "passed",
+        "command_ref": "validate-kit",
+        "evidence_ref": "terminal:validate-kit"
+      },
+      {
+        "name": "complete unit suite",
+        "status": "passed",
+        "command_ref": "unit-tests",
+        "evidence_ref": "terminal:unit-tests"
+      }
+    ],
+    "metrics": [],
+    "artifacts": [
+      {
+        "kind": "learning schema and template",
+        "ref": ".agent-system/schemas/learning.schema.json",
+        "classification": "public"
+      },
+      {
+        "kind": "synthetic behavioral eval",
+        "ref": "evals/cases/behavioral-cases.json",
+        "classification": "synthetic"
+      },
+      {
+        "kind": "generated project overlay",
+        "ref": "dist/project-overlay",
+        "classification": "public"
+      }
+    ],
+    "decision": "not_applicable"
+  },
+  "knowledge": {
+    "verified_facts": [
+      "New learning records use schema_version 0.3 with independent execution and user outcome fields.",
+      "Historical schema_version 0.1 and 0.2 learning records remain valid.",
+      "Version 0.3 finalization permits at most three fully actionable, sibling-run-traceable signals.",
+      "Tracked workflow instructions now explicitly inspect request, routing, acceptance, validation, feedback, rework, and material detours for project- versus kit-scoped learning.",
+      "The synthetic technical-report rework eval records completed execution, rework_required user outcome, and separate project and kit signals.",
+      "Source validation and all 124 unit tests passed."
+    ],
+    "assumptions": [],
+    "remaining_uncertainty": [
+      "Behavioral eval contracts validate expected agent behavior but do not execute every external agent harness.",
+      "User outcome remains unknown until explicit acceptance, rejection, or rework evidence exists."
+    ]
+  }
+}

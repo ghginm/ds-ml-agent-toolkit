@@ -1,0 +1,151 @@
+{
+  "schema_version": "0.1",
+  "policy_status": "approved_project_policy",
+  "approval": {
+    "authority": "User-approved toolkit implementation task",
+    "evidence_ref": "attachment:hermes-dsml-agent-kit-prompt-2.md"
+  },
+  "instruction_precedence": [
+    "organization_policy",
+    "repository_contract",
+    "path_specific_instructions",
+    "selected_skill",
+    "task_state",
+    "runtime_evidence"
+  ],
+  "decision_rule": {
+    "all_must_be_true": [
+      "allowed_by_organization_policy",
+      "available_to_the_approved_tool",
+      "authorized_for_the_current_task"
+    ],
+    "note": "Approval at a lower level cannot override a higher-level prohibition."
+  },
+  "default_decisions": {
+    "ordinary_repository_read": "allowed",
+    "task_scoped_local_edit": "allowed",
+    "sensitive_data_access": "unknown",
+    "external_transmission": "unknown",
+    "remote_mutation": "unknown",
+    "production_mutation": "forbidden",
+    "unknown_behavior": "forbidden"
+  },
+  "actions": {
+    "allowed": [
+      {
+        "id": "authorized_repository_read",
+        "scope": "Read and search files, configuration, schemas, tests, documentation, notebooks, and SQL in the authorized repository."
+      },
+      {
+        "id": "evidence_mapping",
+        "scope": "Build project, data, model, lineage, entry-point, risk, and evidence maps from permitted sources."
+      },
+      {
+        "id": "task_scoped_local_edit",
+        "scope": "Edit files in the current task worktree or branch when the request authorizes a change."
+      },
+      {
+        "id": "task_scoped_local_git",
+        "scope": "Create and use local experiment branches, isolated worktrees, commits, checkouts, and rollback for versioning inside an authorized task without modifying remotes or pre-existing user work."
+      },
+      {
+        "id": "safe_local_validation",
+        "scope": "Run approved local unit tests, linting, type checks, and bounded smoke checks with known effects."
+      },
+      {
+        "id": "approved_small_execution",
+        "scope": "Execute a notebook or small experiment only when its data, compute, network, and write effects are allowed."
+      },
+      {
+        "id": "sanitized_artifacts",
+        "scope": "Create diffs, reports, manifests, findings, and exact human-run commands containing no protected data or secrets."
+      }
+    ],
+    "approval_required": [
+      {
+        "id": "internal_data_query",
+        "scope": "Use bounded read-only access to an internal data source under documented project authorization."
+      },
+      {
+        "id": "dependency_change",
+        "scope": "Install, upgrade, remove, or resolve a dependency."
+      },
+      {
+        "id": "costly_compute",
+        "scope": "Run a full feature pipeline, training job, distributed job, or expensive search."
+      },
+      {
+        "id": "git_remote_change",
+        "scope": "Push, create remote branches or repositories, open pull requests, change remote configuration, or perform other external repository writes."
+      },
+      {
+        "id": "delivery_configuration",
+        "scope": "Change CI/CD, scheduler, infrastructure, orchestration, or environment configuration."
+      },
+      {
+        "id": "remote_ml_system_write",
+        "scope": "Write to an experiment tracker, feature store, model registry, or another remote system."
+      },
+      {
+        "id": "confidential_data_processing",
+        "scope": "Process confidential data only when the approved assistant and toolchain are authorized for that classification."
+      }
+    ],
+    "forbidden": [
+      {
+        "id": "production_data_mutation",
+        "scope": "Production INSERT, UPDATE, DELETE, DDL, or equivalent mutation."
+      },
+      {
+        "id": "deployment_or_promotion",
+        "scope": "Deployment, release promotion, or writes to production feature stores or model registries."
+      },
+      {
+        "id": "protected_branch_push",
+        "scope": "Push to a protected branch or bypass a required review, permission, or governance check."
+      },
+      {
+        "id": "secret_access_or_disclosure",
+        "scope": "Read, display, copy, retain, or transmit credentials, tokens, private keys, or other secrets."
+      },
+      {
+        "id": "unapproved_sensitive_transmission",
+        "scope": "Send customer data, transactions, PII, SAR/STR-related information, confidential code, or other sensitive material to an unapproved model or service."
+      },
+      {
+        "id": "unapproved_external_access",
+        "scope": "Use arbitrary internet access, external tool servers, or SaaS integrations without documented approval."
+      },
+      {
+        "id": "silent_policy_or_skill_change",
+        "scope": "Automatically modify released skills, protected policy, security rules, or adapter permissions."
+      },
+      {
+        "id": "fabricated_execution_claim",
+        "scope": "Claim a command, test, query, training run, metric, or validation succeeded when it was not actually produced."
+      }
+    ]
+  },
+  "fallback_when_capability_absent": [
+    "perform_static_analysis from permitted evidence",
+    "state unverified assumptions and decision impact",
+    "provide the exact bounded command, query, or runbook for an authorized operator"
+  ],
+  "artifact_data_rules": {
+    "allowed": [
+      "sanitized input references",
+      "decision summaries",
+      "hypotheses",
+      "commands and exit status",
+      "aggregate results",
+      "evidence references",
+      "uncertainty"
+    ],
+    "forbidden": [
+      "secrets",
+      "raw customer rows",
+      "complete sensitive terminal output",
+      "hidden chain-of-thought"
+    ]
+  }
+}

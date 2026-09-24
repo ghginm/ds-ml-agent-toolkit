@@ -1,0 +1,50 @@
+{
+  "schema_version": "0.1",
+  "pdf": "/home/ghgin/projects/ds_agents/.agent-system/runs/stabilize-dsml-report-synthesis/pdf-smoke/smoke.pdf",
+  "page_count": 2,
+  "page_images": [
+    "/home/ghgin/projects/ds_agents/.agent-system/runs/stabilize-dsml-report-synthesis/pdf-smoke/qa/page-001.png",
+    "/home/ghgin/projects/ds_agents/.agent-system/runs/stabilize-dsml-report-synthesis/pdf-smoke/qa/page-002.png"
+  ],
+  "contact_sheet": "/home/ghgin/projects/ds_agents/.agent-system/runs/stabilize-dsml-report-synthesis/pdf-smoke/qa/contact-sheet.png",
+  "geometry_status": "warnings",
+  "pages": [
+    {
+      "page": 1,
+      "bbox_points": [
+        72.989998,
+        627.605981,
+        346.769989,
+        773.333976
+      ],
+      "occupied_vertical_ratio": 0.173,
+      "warnings": []
+    },
+    {
+      "page": 2,
+      "bbox_points": [
+        72.308951,
+        717.605978,
+        201.293994,
+        773.117976
+      ],
+      "occupied_vertical_ratio": 0.066,
+      "warnings": [
+        "sparse_page"
+      ]
+    }
+  ],
+  "visual_review": {
+    "status": "not_performed",
+    "reviewed_pages": [],
+    "notes": "Page images have not yet been visually inspected.",
+    "required_checks": [
+      "whitespace balance",
+      "hierarchy",
+      "awkward page breaks",
+      "clipped text",
+      "table bounds",
+      "chart readability"
+    ]
+  }
+}

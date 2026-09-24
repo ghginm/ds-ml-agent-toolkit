@@ -1,0 +1,55 @@
+{
+  "schema_version": "0.1",
+  "task": {
+    "id": "task-id",
+    "mode": "tracked",
+    "goal": "State the concrete outcome this run should produce.",
+    "scope": [],
+    "non_goals": [],
+    "constraints": [],
+    "budget": {},
+    "evaluation_plan": [],
+    "acceptance": [
+      "State at least one observable acceptance criterion."
+    ],
+    "expected_outputs": []
+  },
+  "policy": {
+    "policy_ref": ".agent-system/policy/capability-policy.template.yaml",
+    "data_classification": "unknown",
+    "allowed_actions": [
+      "Read and search the authorized repository."
+    ],
+    "approval_gates": [],
+    "authorization_boundary": []
+  },
+  "provenance": {
+    "repository": {
+      "revision": null,
+      "working_tree": "Record the inspected state when available.",
+      "diff_ref": null
+    },
+    "project_map_version": null,
+    "environment": {},
+    "inputs": [],
+    "versions": {},
+    "seeds": []
+  },
+  "execution": {
+    "tools": [],
+    "commands": [],
+    "changed_files": []
+  },
+  "results": {
+    "status": "not_run",
+    "tests": [],
+    "metrics": [],
+    "artifacts": [],
+    "decision": "not_verified"
+  },
+  "knowledge": {
+    "verified_facts": [],
+    "assumptions": [],
+    "remaining_uncertainty": []
+  }
+}

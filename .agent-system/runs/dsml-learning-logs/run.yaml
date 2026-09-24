@@ -1,0 +1,198 @@
+{
+  "schema_version": "0.1",
+  "task": {
+    "id": "dsml-learning-logs",
+    "mode": "tracked",
+    "goal": "Separate task evidence from compact cross-project learning metadata.",
+    "scope": [
+      "Run and learning schemas, templates, generation, and validation.",
+      "Concise runtime and maintainer documentation.",
+      "Focused synthetic fixtures, regression tests, and generated overlay."
+    ],
+    "non_goals": [
+      "Cross-project collection, clustering, or an automated improvement agent.",
+      "Databases, telemetry, embeddings, event sourcing, or automatic instruction changes.",
+      "Publishing a toolkit release or modifying protected released skill and adapter instructions without explicit human approval."
+    ],
+    "constraints": [
+      "Preserve run.yaml as authoritative task evidence.",
+      "Keep learning.yaml compact, metric-free, sparse, and backward compatible with historical run-only records.",
+      "Use only synthetic, non-sensitive evaluation data."
+    ],
+    "budget": {},
+    "evaluation_plan": [
+      "Exercise the learning schema and paired run initializer with focused unit tests.",
+      "Build and validate the deterministic project overlay.",
+      "Run source validation and the complete unit and synthetic installed-project suite."
+    ],
+    "acceptance": [
+      "New tracked runs initialize both run.yaml and learning.yaml.",
+      "Learning records validate sparse signals, routing corrections, request metadata, and project or kit scope.",
+      "Historical run-only records remain valid."
+    ],
+    "expected_outputs": [
+      ".agent-system/schemas/learning.schema.json",
+      ".agent-system/templates/learning.template.yaml",
+      ".agent-system/LEARNING_LOOP.md",
+      "tooling/create-run.py",
+      "dist/project-overlay"
+    ]
+  },
+  "policy": {
+    "policy_ref": ".agent-system/policy/capability-policy.yaml",
+    "data_classification": "public",
+    "allowed_actions": [
+      "Read and edit the authorized source repository.",
+      "Run local deterministic build, validation, and unit-test commands.",
+      "Use only synthetic evaluation evidence."
+    ],
+    "approval_gates": [],
+    "authorization_boundary": [
+      "No production systems, customer data, external mutation, commit, push, or release.",
+      "Released core skills and adapter instructions require separate explicit human approval."
+    ]
+  },
+  "provenance": {
+    "repository": {
+      "revision": null,
+      "working_tree": "Workspace is not initialized as a Git repository; files were inspected directly before editing.",
+      "diff_ref": null
+    },
+    "project_map_version": null,
+    "environment": {
+      "host": "WSL"
+    },
+    "inputs": [
+      {
+        "kind": "implementation brief",
+        "ref": "C:/Users/ghgin/Desktop/2.txt",
+        "classification": "public"
+      }
+    ],
+    "versions": {
+      "toolkit": "0.3.0"
+    },
+    "seeds": []
+  },
+  "execution": {
+    "tools": [
+      "Codex patching workflow",
+      "Python standard library"
+    ],
+    "commands": [
+      {
+        "id": "build-overlay",
+        "command": "python3 -B tooling/build-overlay.py",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:build-overlay",
+        "sanitized_summary": "The deterministic project overlay was rebuilt."
+      },
+      {
+        "id": "source-validation",
+        "command": "python3 -B tooling/validate-kit.py",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:source-validation",
+        "sanitized_summary": "Source validation passed with 42 behavioral cases and 36 synthetic fixtures."
+      },
+      {
+        "id": "overlay-validation",
+        "command": "python3 -B tooling/validate-kit.py --overlay dist/project-overlay",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:overlay-validation",
+        "sanitized_summary": "Generated overlay validation passed."
+      },
+      {
+        "id": "unit-tests",
+        "command": "python3 -B -m unittest discover -s tests -v",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:unit-tests",
+        "sanitized_summary": "All 112 unit and synthetic installed-project tests passed."
+      }
+    ],
+    "changed_files": [
+      ".agent-system/LEARNING_LOOP.md",
+      ".agent-system/DSML_AGENT_KIT.md",
+      ".agent-system/schemas/learning.schema.json",
+      ".agent-system/templates/learning.template.yaml",
+      ".agent-system/templates/AGENTS.dsml.template.md",
+      ".agent-system/runs/dsml-learning-logs/run.yaml",
+      ".agent-system/runs/dsml-learning-logs/learning.yaml",
+      "README.md",
+      "tooling/create-run.py",
+      "tooling/build-overlay.py",
+      "tooling/validate-kit.py",
+      "tests/test_validate_kit.py",
+      "tests/test_onboarding.py",
+      "evals/fixtures/synthetic-fixtures.json",
+      "dist/project-overlay"
+    ]
+  },
+  "results": {
+    "status": "completed",
+    "tests": [
+      {
+        "name": "source toolkit validation",
+        "status": "passed",
+        "command_ref": "source-validation",
+        "evidence_ref": "terminal:source-validation"
+      },
+      {
+        "name": "generated overlay validation",
+        "status": "passed",
+        "command_ref": "overlay-validation",
+        "evidence_ref": "terminal:overlay-validation"
+      },
+      {
+        "name": "unit and synthetic installed-project suite",
+        "status": "passed",
+        "command_ref": "unit-tests",
+        "evidence_ref": "terminal:unit-tests"
+      }
+    ],
+    "metrics": [],
+    "artifacts": [
+      {
+        "kind": "learning schema",
+        "ref": ".agent-system/schemas/learning.schema.json",
+        "classification": "public"
+      },
+      {
+        "kind": "learning template",
+        "ref": ".agent-system/templates/learning.template.yaml",
+        "classification": "public"
+      },
+      {
+        "kind": "architecture design note",
+        "ref": ".agent-system/LEARNING_LOOP.md",
+        "classification": "public"
+      },
+      {
+        "kind": "generated project overlay",
+        "ref": "dist/project-overlay",
+        "classification": "public"
+      }
+    ],
+    "decision": "not_applicable"
+  },
+  "knowledge": {
+    "verified_facts": [
+      "The initializer creates run.yaml and learning.yaml together without overwriting an existing run directory.",
+      "The learning contract accepts empty signals, request metadata, actual skill and mode, routing corrections, and project or kit scope.",
+      "Detailed metric fields are rejected from learning.yaml while historical run-only directories remain valid.",
+      "The two observed cases are represented as sanitized synthetic learning fixtures without project metrics."
+    ],
+    "assumptions": [],
+    "remaining_uncertainty": [
+      "Protected core SKILL.md and Copilot adapter clauses still describe the legacy feedback/pattern flow because the required explicit human approval was not available during this run.",
+      "No Git revision or diff is available because this workspace is not initialized as a Git repository."
+    ]
+  }
+}

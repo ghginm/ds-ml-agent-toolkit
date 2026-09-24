@@ -1,0 +1,208 @@
+{
+  "schema_version": "0.1",
+  "task": {
+    "id": "dsml-agent-kit-v0.3.0-learning-signals",
+    "mode": "tracked",
+    "goal": "Add a lightweight recurring-work-pattern signal alongside existing failure feedback while preserving the three-skill architecture, safety boundaries, and deterministic overlay flow.",
+    "scope": [
+      "Recurring-pattern schema and installed-project validation.",
+      "Runtime learning-signal instructions and maintenance workflow.",
+      "Focused synthetic behavioral coverage and unit tests.",
+      "Concise deployed setup guide and regenerated overlay."
+    ],
+    "non_goals": [
+      "Per-task pattern logs, new services, telemetry fields, or automatic toolkit self-editing.",
+      "Changes to capability authorization semantics or the three-skill structure."
+    ],
+    "constraints": [
+      "Keep failure feedback and recurring patterns distinct and sanitized.",
+      "Use existing run task metadata as pattern evidence.",
+      "Do not distribute an empty project-owned patterns.yaml artifact."
+    ],
+    "budget": {},
+    "evaluation_plan": [
+      "Build the deterministic project overlay.",
+      "Validate source and overlay modes.",
+      "Run the complete unit and synthetic installed-project suite.",
+      "Run blind forward checks for one-off success and recurring-workflow review."
+    ],
+    "acceptance": [
+      "The optional patterns artifact has a small validated schema and capped sanitized evidence.",
+      "Runtime instructions enforce the recurrence threshold and feedback-versus-pattern distinction.",
+      "The overlay contains the schema but no empty patterns artifact.",
+      "All deterministic validation and unit tests pass."
+    ],
+    "expected_outputs": [
+      ".agent-system/schemas/patterns.schema.json",
+      ".agent-system/templates/AGENTS.dsml.template.md",
+      ".agents/skills",
+      "tooling/validate-kit.py",
+      "tooling/build-overlay.py",
+      "evals",
+      "tests",
+      "dist/project-overlay"
+    ]
+  },
+  "policy": {
+    "policy_ref": ".agent-system/policy/capability-policy.yaml",
+    "data_classification": "public",
+    "allowed_actions": [
+      "Read and edit the authorized source repository.",
+      "Run local deterministic build, validation, and unit-test commands.",
+      "Use only synthetic evaluation evidence."
+    ],
+    "approval_gates": [],
+    "authorization_boundary": [
+      "No production systems, secrets, customer data, external mutation, commit, or push."
+    ]
+  },
+  "provenance": {
+    "repository": {
+      "revision": null,
+      "working_tree": "Workspace is not a Git repository; a pre-change filesystem snapshot was used for diff review.",
+      "diff_ref": "/tmp/ds_agents_pattern_loop.diff"
+    },
+    "project_map_version": null,
+    "environment": {
+      "host": "WSL",
+      "python": "3.12.3"
+    },
+    "inputs": [
+      {
+        "kind": "implementation brief",
+        "ref": "_prompts/hermes-dsml-agent-kit-prompt-v0.2.3.md",
+        "classification": "public"
+      },
+      {
+        "kind": "synthetic evaluation data",
+        "ref": "evals/fixtures/synthetic-fixtures.json",
+        "classification": "synthetic"
+      }
+    ],
+    "versions": {
+      "toolkit": "0.3.0"
+    },
+    "seeds": []
+  },
+  "execution": {
+    "tools": [
+      "Hermes file tools",
+      "Python standard library",
+      "Hermes isolated subagents"
+    ],
+    "commands": [
+      {
+        "id": "build-overlay",
+        "command": "python3 -B tooling/build-overlay.py",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:final-build",
+        "sanitized_summary": "PASS: project overlay built deterministically."
+      },
+      {
+        "id": "source-validation",
+        "command": "python3 -B tooling/validate-kit.py --source",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:final-source-validation",
+        "sanitized_summary": "PASS: exactly three core skills; 33 behavioral cases and 33 fixtures validated."
+      },
+      {
+        "id": "overlay-validation",
+        "command": "python3 -B tooling/validate-kit.py --overlay dist/project-overlay",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:final-overlay-validation",
+        "sanitized_summary": "PASS: overlay toolkit-owned files are valid."
+      },
+      {
+        "id": "unit-tests",
+        "command": "python3 -B -m unittest discover -s tests -v",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:final-unit-tests",
+        "sanitized_summary": "95 tests passed, including clean-copy documented-command coverage."
+      }
+    ],
+    "changed_files": [
+      "VERSION",
+      "README.md",
+      ".agent-system/DSML_AGENT_KIT.md",
+      ".agent-system/schemas/patterns.schema.json",
+      ".agent-system/templates/AGENTS.dsml.template.md",
+      ".agent-system/templates/feedback.template.yaml",
+      ".agent-system/templates/improvement-candidate.template.md",
+      ".agents/skills/analyze-dsml-project/SKILL.md",
+      ".agents/skills/execute-dsml-task/SKILL.md",
+      ".agents/skills/validate-dsml-result/SKILL.md",
+      "evals/README.md",
+      "evals/cases/behavioral-cases.json",
+      "evals/fixtures/synthetic-fixtures.json",
+      "tests/test_onboarding.py",
+      "tests/test_validate_kit.py",
+      "tooling/build-overlay.py",
+      "tooling/validate-kit.py",
+      ".agent-system/runs/dsml-agent-kit-v0.3.0-learning-signals/run.yaml",
+      "dist/project-overlay"
+    ]
+  },
+  "results": {
+    "status": "completed",
+    "tests": [
+      {
+        "name": "source toolkit validation",
+        "status": "passed",
+        "command_ref": "source-validation",
+        "evidence_ref": "terminal:final-source-validation"
+      },
+      {
+        "name": "generated overlay validation",
+        "status": "passed",
+        "command_ref": "overlay-validation",
+        "evidence_ref": "terminal:final-overlay-validation"
+      },
+      {
+        "name": "unit and synthetic installed-project suite",
+        "status": "passed",
+        "command_ref": "unit-tests",
+        "evidence_ref": "terminal:final-unit-tests"
+      }
+    ],
+    "metrics": [],
+    "artifacts": [
+      {
+        "kind": "recurring-pattern schema",
+        "ref": ".agent-system/schemas/patterns.schema.json",
+        "classification": "public"
+      },
+      {
+        "kind": "generated project overlay",
+        "ref": "dist/project-overlay",
+        "classification": "public"
+      },
+      {
+        "kind": "synthetic behavioral suite",
+        "ref": "evals",
+        "classification": "synthetic"
+      }
+    ],
+    "decision": "not_applicable"
+  },
+  "knowledge": {
+    "verified_facts": [
+      "The release remains exactly three core skills.",
+      "The overlay manifest owns patterns.schema.json and intentionally excludes project-owned patterns.yaml.",
+      "Pattern validation rejects a single occurrence, more than three evidence references, and forbidden raw-content fields.",
+      "The deployed setup guide was reduced from 132 to 86 lines while retaining operational and safety requirements."
+    ],
+    "assumptions": [],
+    "remaining_uncertainty": [
+      "Behavioral case execution depends on harness behavior; deterministic checks validate the case contracts but do not prove every external agent will follow them.",
+      "No Git revision or repository status is available because the workspace is not initialized as a Git repository."
+    ]
+  }
+}

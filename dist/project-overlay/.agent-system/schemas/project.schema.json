@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:dsml-agent-kit:project-schema:0.2",
+  "title": "DS/ML agent project context",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version"],
+  "properties": {
+    "schema_version": {"type": "string", "enum": ["0.2"]},
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {"type": ["string", "null"], "pattern": "\\S"}
+      }
+    },
+    "commands": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tests": {"type": ["string", "null"], "pattern": "\\S"},
+        "lint": {"type": ["string", "null"], "pattern": "\\S"},
+        "typecheck": {"type": ["string", "null"], "pattern": "\\S"}
+      }
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "training": {"type": ["string", "null"], "pattern": "\\S"},
+        "inference": {"type": ["string", "null"], "pattern": "\\S"},
+        "tests": {"type": ["string", "null"], "pattern": "\\S"}
+      }
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default_classification": {
+          "type": "string",
+          "enum": ["public", "internal", "confidential", "restricted", "unknown"]
+        }
+      }
+    },
+    "compute": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "local_training": {"type": ["string", "null"], "pattern": "\\S"},
+        "distributed_training": {"type": ["string", "null"], "pattern": "\\S"}
+      }
+    },
+    "systems": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "distributed_compute": {"type": ["string", "null"], "pattern": "\\S"},
+        "experiment_tracker": {"type": ["string", "null"], "pattern": "\\S"},
+        "scheduler": {"type": ["string", "null"], "pattern": "\\S"},
+        "model_registry": {"type": ["string", "null"], "pattern": "\\S"},
+        "git_provider": {"type": ["string", "null"], "pattern": "\\S"}
+      }
+    }
+  }
+}

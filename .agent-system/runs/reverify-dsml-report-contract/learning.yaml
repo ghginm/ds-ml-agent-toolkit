@@ -1,0 +1,22 @@
+{
+  "schema_version": "0.2",
+  "timestamp": "2026-09-21",
+  "toolkit_version": "0.4.4",
+  "run_ref": ".agent-system/runs/reverify-dsml-report-contract/run.yaml",
+  "request": {
+    "kind": "validation",
+    "topics": [
+      "report-synthesis",
+      "contract-compliance"
+    ],
+    "deliverable": "finding-report"
+  },
+  "routing": {
+    "skill": "validate-dsml-result",
+    "mode": "review",
+    "initial_skill": null,
+    "initial_mode": null,
+    "corrected": false
+  },
+  "signals": []
+}

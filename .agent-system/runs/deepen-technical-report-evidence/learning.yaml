@@ -1,0 +1,27 @@
+{
+  "schema_version": "0.3",
+  "timestamp": "2026-09-22",
+  "toolkit_version": "0.6.0",
+  "run_ref": ".agent-system/runs/deepen-technical-report-evidence/run.yaml",
+  "request": {
+    "kind": "maintenance",
+    "topics": [
+      "report-depth",
+      "evidence-coverage"
+    ],
+    "deliverable": "toolkit-change"
+  },
+  "routing": {
+    "skill": "analyze-dsml-project",
+    "mode": "technical-report",
+    "initial_skill": null,
+    "initial_mode": null,
+    "corrected": false
+  },
+  "outcome": {
+    "execution": "completed",
+    "user_outcome": "unknown",
+    "reason_tags": []
+  },
+  "signals": []
+}

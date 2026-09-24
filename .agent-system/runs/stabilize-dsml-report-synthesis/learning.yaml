@@ -1,0 +1,22 @@
+{
+  "schema_version": "0.2",
+  "timestamp": "2026-09-21",
+  "toolkit_version": "0.4.4",
+  "run_ref": ".agent-system/runs/stabilize-dsml-report-synthesis/run.yaml",
+  "request": {
+    "kind": "implementation",
+    "topics": [
+      "report-synthesis",
+      "pdf-qa"
+    ],
+    "deliverable": "toolkit-change"
+  },
+  "routing": {
+    "skill": "execute-dsml-task",
+    "mode": "diagnose",
+    "initial_skill": null,
+    "initial_mode": null,
+    "corrected": false
+  },
+  "signals": []
+}

@@ -1,0 +1,64 @@
+{
+  "schema_version": "0.1",
+  "task": {
+    "id": "deepen-technical-report-evidence",
+    "mode": "tracked",
+    "goal": "Increase technical-report analytical depth without changing the stable report architecture",
+    "scope": ["Technical-report analysis, normalized state, planning, composition, semantic validation, PDF density QA, and synthetic evals."],
+    "non_goals": ["Redesign the stable report skeleton.", "Publish or deploy a release."],
+    "constraints": ["Use only synthetic evidence.", "Preserve backward compatibility for analysis-state 0.1/0.2 and report-plan 0.1."],
+    "budget": {},
+    "evaluation_plan": ["Run focused report tests.", "Validate both modified skills.", "Rebuild and validate the overlay.", "Run the full unit suite."],
+    "acceptance": [
+      "Focus-aware coverage, evidence mapping, depth iteration, semantic QA, density QA, and synthetic evals pass"
+    ],
+    "expected_outputs": ["Updated report skills/workflow/validators/evals.", "Synchronized 0.6.1 project overlay."]
+  },
+  "policy": {
+    "policy_ref": ".agent-system/policy/capability-policy.yaml",
+    "data_classification": "public",
+    "allowed_actions": [
+      "Read and edit the authorized source repository.",
+      "Modify released skills after explicit human maintenance approval.",
+      "Run local deterministic builds, validation, and synthetic tests."
+    ],
+    "approval_gates": [],
+    "authorization_boundary": ["User explicitly approved released-skill maintenance after disclosure.", "No remote mutation, publication, production system, or sensitive data access."]
+  },
+  "provenance": {
+    "repository": {
+      "revision": null,
+      "working_tree": "Workspace is not a Git repository; changes were inspected from the filesystem.",
+      "diff_ref": null
+    },
+    "project_map_version": null,
+    "environment": {"host": "WSL", "python": "3.12", "pdf_renderer": "Ghostscript"},
+    "inputs": [{"kind": "user maintenance request", "ref": "attached prompt", "classification": "public"}, {"kind": "synthetic report fixtures", "ref": "evals/fixtures/synthetic-fixtures.json", "classification": "synthetic"}],
+    "versions": {"toolkit": "0.6.1"},
+    "seeds": []
+  },
+  "execution": {
+    "tools": ["Python standard library", "Ghostscript", "repository validators", "skill-creator validator"],
+    "commands": [
+      {"id":"focused-report-tests","command":"python3 -B -m unittest tests.test_report_composition -v","capability":"safe_local_validation","status":"succeeded","exit_code":0,"evidence_ref":"terminal:focused-report-tests","sanitized_summary":"14 focused report-depth and PDF-QA tests passed."},
+      {"id":"build-overlay","command":"python3 -B tooling/build-overlay.py","capability":"safe_local_validation","status":"succeeded","exit_code":0,"evidence_ref":"terminal:build-overlay","sanitized_summary":"Project overlay rebuilt at toolkit version 0.6.1."},
+      {"id":"source-validation","command":"python3 -B tooling/validate-kit.py","capability":"safe_local_validation","status":"succeeded","exit_code":0,"evidence_ref":"terminal:source-validation","sanitized_summary":"Source toolkit, 62 behavioral cases, 40 fixtures, and distribution drift checks passed."},
+      {"id":"overlay-validation","command":"python3 -B dist/project-overlay/.agent-system/tooling/validate-kit.py --installed-project dist/project-overlay","capability":"safe_local_validation","status":"succeeded","exit_code":0,"evidence_ref":"terminal:overlay-validation","sanitized_summary":"Generated installed-project overlay validation passed."},
+      {"id":"skill-validation","command":"python3 -B skill-creator/scripts/quick_validate.py <modified-skill>","capability":"safe_local_validation","status":"succeeded","exit_code":0,"evidence_ref":"terminal:skill-validation","sanitized_summary":"Both modified skills passed quick validation."},
+      {"id":"full-unit-tests","command":"python3 -B -m unittest discover -s tests -v","capability":"safe_local_validation","status":"succeeded","exit_code":0,"evidence_ref":"terminal:full-unit-tests","sanitized_summary":"132 tests passed."}
+    ],
+    "changed_files": ["VERSION", ".agent-system/workflows/technical-report.md", ".agent-system/templates/learning.template.yaml", ".agents/skills/analyze-dsml-project/SKILL.md", ".agents/skills/analyze-dsml-project/references/technical-report.md", ".agents/skills/compose-dsml-report/SKILL.md", ".agents/skills/compose-dsml-report/references/analysis-state.md", ".agents/skills/compose-dsml-report/assets/report-template.md", ".agents/skills/compose-dsml-report/scripts/validate_dsml_report.py", ".agents/skills/compose-dsml-report/scripts/qa_dsml_report_pdf.py", ".agents/skills/execute-dsml-task/SKILL.md", ".agents/skills/validate-dsml-result/SKILL.md", ".agents/skills/autoresearch/SKILL.md", "evals/cases/report-composition-cases.json", "evals/cases/behavioral-cases.json", "evals/fixtures/synthetic-fixtures.json", "tests/test_report_composition.py", "tests/test_validate_kit.py", "dist/project-overlay", ".agent-system/runs/deepen-technical-report-evidence"]
+  },
+  "results": {
+    "status": "completed",
+    "tests": [{"name":"focused report-depth suite","status":"passed","command_ref":"focused-report-tests","evidence_ref":"terminal:focused-report-tests"},{"name":"source toolkit validation","status":"passed","command_ref":"source-validation","evidence_ref":"terminal:source-validation"},{"name":"generated overlay validation","status":"passed","command_ref":"overlay-validation","evidence_ref":"terminal:overlay-validation"},{"name":"modified skill validation","status":"passed","command_ref":"skill-validation","evidence_ref":"terminal:skill-validation"},{"name":"complete unit suite","status":"passed","command_ref":"full-unit-tests","evidence_ref":"terminal:full-unit-tests"}],
+    "metrics": [],
+    "artifacts": [{"kind":"updated reporting runtime","ref":".agents/skills/compose-dsml-report","classification":"public"},{"kind":"generated project overlay","ref":"dist/project-overlay","classification":"public"}],
+    "decision": "not_applicable"
+  },
+  "knowledge": {
+    "verified_facts": ["Analysis-state 0.3 preserves rich focus evidence while 0.1 and 0.2 remain accepted.", "Iteration 2 now requires a substantive content-depth revision.", "In-range reports with multiple sparse pages are flagged as underfilled.", "All 132 unit tests and both source/overlay validations pass."],
+    "assumptions": [],
+    "remaining_uncertainty": ["The repository has no end-to-end agent runner or Markdown-to-PDF renderer, so the forecasting report was not regenerated.", "Behavioral cases define observable invariants but were not executed by an independent agent in this run."]
+  }
+}

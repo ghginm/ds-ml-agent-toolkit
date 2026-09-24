@@ -1,0 +1,211 @@
+{
+  "schema_version": "0.1",
+  "task": {
+    "id": "reverify-dsml-report-contract",
+    "mode": "tracked",
+    "goal": "Re-verify the implemented DS/ML technical-report workflow against the complete attached contract without modifying implementation.",
+    "scope": [
+      "Normalized-state and synthesis-gate contract.",
+      "Composer structure and semantic review.",
+      "Structural validator and Markdown source contract.",
+      "A4 layout, density, page-image, and visual-review workflow.",
+      "Cross-project evals, routing, deep-audit preservation, overlay packaging, and active instruction conflicts."
+    ],
+    "non_goals": [
+      "Modify the implementation during validation.",
+      "Claim actual report visual quality without a successful image inspection."
+    ],
+    "constraints": [
+      "Review is logically separated but performed by the same agent.",
+      "Use only synthetic temporary PDF data for falsification."
+    ],
+    "budget": {},
+    "evaluation_plan": [
+      "Inspect active source and generated overlay.",
+      "Run source, overlay, focused, routing, and full unit validation.",
+      "Generate a synthetic PDF with a blank middle page and inspect the QA record.",
+      "Search active instructions for superseded composition rules."
+    ],
+    "acceptance": [
+      "Every material contract area receives an evidence-backed verdict, with gaps and unavailable visual checks explicit."
+    ],
+    "expected_outputs": [
+      "Evidence-backed contract verdict and material findings."
+    ]
+  },
+  "policy": {
+    "policy_ref": ".agent-system/policy/capability-policy.yaml",
+    "data_classification": "public",
+    "allowed_actions": [
+      "Read and search the authorized repository.",
+      "Run local deterministic validation and synthetic temporary falsification checks.",
+      "Write only tracked validation records."
+    ],
+    "approval_gates": [],
+    "authorization_boundary": [
+      "No implementation, released-skill, overlay, production, remote, or external-system mutation."
+    ]
+  },
+  "provenance": {
+    "repository": {
+      "revision": null,
+      "working_tree": "Workspace is not a Git repository; validation used the current filesystem and generated manifest.",
+      "diff_ref": null
+    },
+    "project_map_version": null,
+    "environment": {
+      "host": "WSL",
+      "python": "3.12",
+      "pdf_qa": "Ghostscript and ImageMagick available"
+    },
+    "inputs": [
+      {
+        "kind": "contract brief",
+        "ref": "user attachment ae3496b8-42f0-49ed-95b9-588a6b034695/Pasted text.txt",
+        "classification": "public"
+      },
+      {
+        "kind": "implementation run",
+        "ref": ".agent-system/runs/stabilize-dsml-report-synthesis/run.yaml",
+        "classification": "public"
+      }
+    ],
+    "versions": {
+      "toolkit": "0.4.4"
+    },
+    "seeds": []
+  },
+  "execution": {
+    "tools": [
+      "Python standard library",
+      "Ghostscript",
+      "ImageMagick",
+      "repository validators"
+    ],
+    "commands": [
+      {
+        "id": "source-validation",
+        "command": "python3 -B tooling/validate-kit.py --source",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:contract-source",
+        "sanitized_summary": "PASS: source toolkit valid; 59 behavioral cases and 39 fixtures validated."
+      },
+      {
+        "id": "overlay-validation",
+        "command": "python3 -B tooling/validate-kit.py --overlay dist/project-overlay",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:contract-overlay",
+        "sanitized_summary": "PASS: overlay toolkit-owned files are valid."
+      },
+      {
+        "id": "focused-report-tests",
+        "command": "python3 -B -m unittest tests.test_report_composition -v",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:focused-report-tests",
+        "sanitized_summary": "Four report-composition tests passed across four archetypes."
+      },
+      {
+        "id": "routing-test",
+        "command": "python3 -B -m unittest tests.test_validate_kit.ValidateKitTests.test_natural_language_routing_contract_and_cases -v",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:routing-test",
+        "sanitized_summary": "Technical-report versus deep-audit routing test passed."
+      },
+      {
+        "id": "blank-page-falsification",
+        "command": "Generate a three-page synthetic PDF with a blank middle page and run qa_dsml_report_pdf.py prepare",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:blank-page-falsification",
+        "sanitized_summary": "The blank page produced sparse_page and content_near_page_edge warnings, but no explicit blank_page diagnostic."
+      },
+      {
+        "id": "full-unit-tests",
+        "command": "python3 -B -m unittest discover -s tests -v",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:full-unit-tests",
+        "sanitized_summary": "119 tests passed."
+      }
+    ],
+    "changed_files": [
+      ".agent-system/runs/reverify-dsml-report-contract/run.yaml",
+      ".agent-system/runs/reverify-dsml-report-contract/learning.yaml"
+    ]
+  },
+  "results": {
+    "status": "completed",
+    "tests": [
+      {
+        "name": "source validation",
+        "status": "passed",
+        "command_ref": "source-validation",
+        "evidence_ref": "terminal:contract-source"
+      },
+      {
+        "name": "overlay validation",
+        "status": "passed",
+        "command_ref": "overlay-validation",
+        "evidence_ref": "terminal:contract-overlay"
+      },
+      {
+        "name": "report composition tests",
+        "status": "passed",
+        "command_ref": "focused-report-tests",
+        "evidence_ref": "terminal:focused-report-tests"
+      },
+      {
+        "name": "routing separation",
+        "status": "passed",
+        "command_ref": "routing-test",
+        "evidence_ref": "terminal:routing-test"
+      },
+      {
+        "name": "blank-page falsification",
+        "status": "failed",
+        "command_ref": "blank-page-falsification",
+        "evidence_ref": "terminal:blank-page-falsification",
+        "sanitized_summary": "Accidental blank pages are not named explicitly."
+      },
+      {
+        "name": "full unit suite",
+        "status": "passed",
+        "command_ref": "full-unit-tests",
+        "evidence_ref": "terminal:full-unit-tests"
+      }
+    ],
+    "metrics": [],
+    "artifacts": [
+      {
+        "kind": "validation record",
+        "ref": ".agent-system/runs/reverify-dsml-report-contract/run.yaml",
+        "classification": "public"
+      }
+    ],
+    "decision": "reject"
+  },
+  "knowledge": {
+    "verified_facts": [
+      "The normalized state, synthesis gate, dedicated composer, stable skeleton, pre-render validator, A4 continuous-flow CSS, visual-review gate, routing separation, and four requested archetypes are present.",
+      "The structural validator rejects reordered or unexpected top-level headings, late findings, flat opportunity groups, missing state revisions, omitted issue IDs, missing low-hanging fruit, and missing decision-enabled text.",
+      "All 119 unit tests pass and source/overlay validation pass.",
+      "No active superseded flexible technical-report instruction was found."
+    ],
+    "assumptions": [],
+    "remaining_uncertainty": [
+      "No real composed report PDF was visually inspected during this re-verification.",
+      "Cross-project tests validate structural behavior but do not render each archetype to PDF or evaluate page density on composed reports.",
+      "The review is logically separated but not independently executed by another agent."
+    ]
+  }
+}
