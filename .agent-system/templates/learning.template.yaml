@@ -1,7 +1,7 @@
 {
   "schema_version": "0.3",
   "timestamp": "1970-01-01",
-  "toolkit_version": "0.6.2",
+  "toolkit_version": "0.8.0",
   "run_ref": ".agent-system/runs/task-id/run.yaml",
   "request": {
     "kind": "task",

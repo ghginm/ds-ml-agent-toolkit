@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -160,6 +161,67 @@ def _read_json(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"{path} must contain an object")
     return value
+
+
+def repair_runtime(root: Path, clean_overlay: Path) -> list[str]:
+    """Restore only manifest-owned runtime files from a trusted same-version overlay."""
+    root = root.expanduser().resolve(strict=True)
+    clean_overlay = clean_overlay.expanduser().resolve(strict=True)
+    source_manifest_path = clean_overlay / ".agent-system" / "manifest.json"
+    source_manifest = _read_json(source_manifest_path)
+    if source_manifest.get("schema_version") != "0.2":
+        raise ValueError("repair source manifest must use schema_version '0.2'")
+    files = source_manifest.get("files")
+    if not isinstance(files, dict) or not files:
+        raise ValueError("repair source manifest must contain runtime files")
+    source_version = source_manifest.get("toolkit_version")
+    if not isinstance(source_version, str) or not source_version.strip():
+        raise ValueError("repair source manifest toolkit_version is invalid")
+    installed_version_path = root / ".agent-system" / "VERSION"
+    if installed_version_path.exists():
+        _reject_symlink_components(root, installed_version_path)
+        installed_version = installed_version_path.read_text(encoding="utf-8").strip()
+        if installed_version != source_version:
+            raise ValueError(
+                "repair source version does not match the installed toolkit version"
+            )
+
+    repaired: list[str] = []
+    for relative, expected_hash in sorted(files.items()):
+        if (
+            not isinstance(relative, str)
+            or not relative
+            or Path(relative).is_absolute()
+            or ".." in Path(relative).parts
+        ):
+            raise ValueError(f"repair source manifest has unsafe path {relative!r}")
+        if not isinstance(expected_hash, str) or re.fullmatch(r"[0-9a-f]{64}", expected_hash) is None:
+            raise ValueError(f"repair source manifest has invalid hash for {relative}")
+        source = clean_overlay / relative
+        if source.is_symlink() or not source.is_file():
+            raise ValueError(f"repair source runtime file is missing or unsafe: {relative}")
+        content = source.read_text(encoding="utf-8")
+        if hashlib.sha256(content.encode("utf-8")).hexdigest() != expected_hash:
+            raise ValueError(f"repair source runtime hash mismatch: {relative}")
+        target = root / relative
+        _reject_symlink_components(root, target)
+        current = target.read_text(encoding="utf-8") if target.is_file() else None
+        if current is None or hashlib.sha256(current.encode("utf-8")).hexdigest() != expected_hash:
+            _safe_write(root, target, content)
+            repaired.append(relative)
+
+    source_manifest_text = source_manifest_path.read_text(encoding="utf-8")
+    target_manifest_path = root / ".agent-system" / "manifest.json"
+    _reject_symlink_components(root, target_manifest_path)
+    target_manifest_text = (
+        target_manifest_path.read_text(encoding="utf-8")
+        if target_manifest_path.is_file()
+        else None
+    )
+    if target_manifest_text != source_manifest_text:
+        _safe_write(root, target_manifest_path, source_manifest_text)
+        repaired.append(".agent-system/manifest.json")
+    return repaired
 
 
 def _active_markdown_lines(text: str) -> list[str]:
@@ -1172,14 +1234,28 @@ def main() -> int:
         action="store_true",
         help="refresh validation/status while preserving existing project-owned files",
     )
+    parser.add_argument(
+        "--repair-runtime",
+        type=Path,
+        metavar="CLEAN_OVERLAY",
+        help="restore manifest-owned files from a trusted same-version clean overlay",
+    )
     args = parser.parse_args()
     try:
+        repaired: list[str] = []
+        if args.repair_runtime is not None:
+            repaired = repair_runtime(args.installed_project, args.repair_runtime)
         verdict, summary = onboard_repository(
             args.installed_project,
             args.harness,
             activation_verified=args.activation_verified,
             recheck=args.recheck,
         )
+        if args.repair_runtime is not None:
+            summary = (
+                f"Runtime integrity: repaired {len(repaired)} manifest-owned file(s); validation completed.\n"
+                + summary
+            )
     except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
         status_error: Exception | None = None
         try:

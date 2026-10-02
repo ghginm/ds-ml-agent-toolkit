@@ -114,9 +114,13 @@ Their presence does not require matching reader-facing labels.
 
 `evidence_surfaces` is a compact discovery ledger for requested focus areas,
 not a repository inventory. Record meaningful available, unavailable, or
-not-applicable surfaces. `focus_coverage` is the pre-composition gate. A weak
-focus with relevant uninspected surfaces blocks composition; unavailable
-coverage requires an explicit `evidence_gap`.
+not-applicable surfaces. Its source, summary, observed metric/result when
+present, uncertainty or limitation, and related focus/component should let
+iteration 2 answer what was inspected and what supports a claim without
+rediscovery. Keep these entries concise; never copy whole source files.
+`focus_coverage` is the pre-composition gate. A weak focus with relevant
+uninspected surfaces blocks composition; unavailable coverage requires an
+explicit `evidence_gap`.
 
 For compatibility with existing installed projects, schema versions `0.1` and
 `0.2` remain valid input. Normalize `0.1` `issues` to `findings` in memory

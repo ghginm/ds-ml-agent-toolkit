@@ -19,7 +19,7 @@ For first onboarding:
 7. Run `python3 -B .agent-system/tooling/validate-kit.py --installed-project .`, record the exact result, and create `.agent-system/onboarding-status.md`.
 8. Return one answer-first verdict: `READY`, `READY_WITH_WARNINGS`, or `ACTION_REQUIRED`; collect every human requirement under `Manual action required`.
 
-The shipped helper `python3 -B <repository-root>/.agent-system/tooling/onboard-project.py --installed-project <repository-root> --harness <harness>` performs conservative structured inference, merge-safe instruction handling, validation, and status generation. Review its inferred cache against authoritative evidence. Use `--recheck` after a manual fix and `--activation-verified` only when required harness activation was actually observed.
+The shipped helper `python3 -B <repository-root>/.agent-system/tooling/onboard-project.py --installed-project <repository-root> --harness <harness>` performs conservative structured inference, merge-safe instruction handling, validation, and status generation. Review its inferred cache against authoritative evidence. Use `--recheck` after a manual fix and `--activation-verified` only when required harness activation was actually observed. For an explicit runtime repair, run `onboard-project.py` from a trusted same-version clean overlay with `--repair-runtime <clean-overlay> --recheck`; it restores only manifest-owned files and preserves project-owned state.
 
 If execution is unavailable, write `Validation: NOT RUN`, a specific reason, and the exact manual command. Unknown optional systems may remain `null` and do not alone require `ACTION_REQUIRED`.
 

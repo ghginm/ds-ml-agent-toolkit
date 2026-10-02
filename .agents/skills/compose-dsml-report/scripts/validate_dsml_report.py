@@ -13,11 +13,17 @@ SECTION_ROLES={"executive-summary","context","data","model","features","evaluati
 REVIEW_SURFACES={"architecture","content","content-depth","visual","final-consistency"}
 COVERAGE_STATUSES={"sufficient","weak","unavailable"}
 AVAILABILITY={"available","unavailable","not_applicable"}
-DEPTH_REVIEW_DIMENSIONS={
-    "descriptive_only","inventory_without_interpretation","mechanism","assumptions",
-    "applicability","failure_modes","interactions","empirical_support_status",
-    "claim_type_separation","omitted_state_reasoning","evidence_interpretation","implication",
+CORE_DEPTH_DIMENSIONS={
+    "mechanism","empirical_support_status","evidence_interpretation","implication",
 }
+CONDITIONAL_DEPTH_DIMENSIONS={
+    "assumptions","applicability","failure_modes","interactions",
+    "claim_type_separation","omitted_state_reasoning",
+}
+DEPTH_DEFECT_DETECTORS={"descriptive_only","inventory_without_interpretation"}
+DEPTH_REVIEW_DIMENSIONS=(
+    CORE_DEPTH_DIMENSIONS|CONDITIONAL_DEPTH_DIMENSIONS|DEPTH_DEFECT_DETECTORS
+)
 SEMANTIC_PATTERNS={
     "mechanism":re.compile(r"\b(because|mechanism|relies on|allows?|enables?|exposes?|captures?|feeds?|so that|by using|by pooling)\b",re.I),
     "applicability":re.compile(r"\b(when|if|under|condition|regime|assum|requires?|depends? on)\b",re.I),
@@ -339,7 +345,7 @@ def validate_review_log(plan:dict[str,Any],review:Any|None)->tuple[list[str],lis
     if requested==1 and review is None: return errors,warnings
     if not isinstance(review,dict): return ["review log is required when requested_iterations is greater than 1"],warnings
     require_fields(review,("schema_version","plan_revision","versions","final_consistency"),"review_log",errors)
-    if review.get("schema_version") not in {"0.1","0.2"}: errors.append("review_log.schema_version must be 0.1 or 0.2")
+    if review.get("schema_version") not in {"0.1","0.2","0.3"}: errors.append("review_log.schema_version must be 0.1, 0.2, or 0.3")
     if str(review.get("plan_revision"))!=str(plan.get("plan_revision")): errors.append("review log plan_revision does not match the report plan")
     versions=review.get("versions")
     if not isinstance(versions,list) or len(versions)!=requested: errors.append(f"review log must contain exactly {requested} report versions"); return errors,warnings
@@ -363,29 +369,67 @@ def validate_review_log(plan:dict[str,Any],review:Any|None)->tuple[list[str],lis
             depth=version.get("depth_review")
             if not isinstance(depth,dict): errors.append(f"{label}.depth_review is required for iteration 2")
             else:
-                require_fields(depth,("focus_reviews","underused_evidence","missing_supported_insights"),f"{label}.depth_review",errors)
+                require_fields(depth,("focus_reviews",),f"{label}.depth_review",errors)
                 reviews=depth.get("focus_reviews")
                 if not isinstance(reviews,list): errors.append(f"{label}.depth_review.focus_reviews must be an array")
                 else:
                     reviewed={str(item.get("focus")) for item in reviews if isinstance(item,dict)}
                     missing=sorted(set(requested_focus_ids(plan))-reviewed)
                     if missing: errors.append(f"{label}.depth_review is missing requested focus areas: {missing}")
-                    if review.get("schema_version")=="0.2":
+                    if review.get("schema_version") in {"0.2","0.3"}:
                         for review_index,item in enumerate(reviews):
                             review_label=f"{label}.depth_review.focus_reviews[{review_index}]"
-                            require_fields(item,("focus","assessment","checked_dimensions","revisions"),review_label,errors)
+                            require_fields(item,("focus","assessment","checked_dimensions"),review_label,errors)
                             if not isinstance(item,dict): continue
                             if item.get("assessment") not in {"pass","revised","unavailable"}: errors.append(f"{review_label}.assessment is invalid")
                             checked=item.get("checked_dimensions")
                             if not isinstance(checked,list): errors.append(f"{review_label}.checked_dimensions must be an array")
                             else:
-                                missing_dimensions=sorted(DEPTH_REVIEW_DIMENSIONS-set(checked))
-                                if missing_dimensions: errors.append(f"{review_label}.checked_dimensions is incomplete: {missing_dimensions}")
+                                unknown=sorted(set(checked)-DEPTH_REVIEW_DIMENSIONS)
+                                if unknown: errors.append(f"{review_label}.checked_dimensions contains invalid values: {unknown}")
+                                if item.get("assessment")!="unavailable":
+                                    missing_core=sorted(CORE_DEPTH_DIMENSIONS-set(checked))
+                                    if missing_core: errors.append(f"{review_label}.checked_dimensions is missing core dimensions: {missing_core}")
+                                relevant=item.get("relevant_conditional_dimensions",[])
+                                if not isinstance(relevant,list): errors.append(f"{review_label}.relevant_conditional_dimensions must be an array")
+                                else:
+                                    invalid=sorted(set(relevant)-CONDITIONAL_DEPTH_DIMENSIONS)
+                                    if invalid: errors.append(f"{review_label}.relevant_conditional_dimensions contains invalid values: {invalid}")
+                                    unchecked=sorted(set(relevant)-set(checked))
+                                    if unchecked: errors.append(f"{review_label} did not check relevant conditional dimensions: {unchecked}")
                             if not isinstance(item.get("revisions"),list): errors.append(f"{review_label}.revisions must be an array")
                 for field in ("underused_evidence","missing_supported_insights"):
                     if not isinstance(depth.get(field),list): errors.append(f"{label}.depth_review.{field} must be an array")
-            if version.get("revision_scope")=="none" or not changed:
-                errors.append(f"{label} must record a substantive content-depth revision with changed sections")
+                if review.get("schema_version")=="0.3":
+                    gaps=depth.get("gaps")
+                    if not isinstance(gaps,list): errors.append(f"{label}.depth_review.gaps must be an array")
+                    else:
+                        for gap_index,gap in enumerate(gaps):
+                            gap_label=f"{label}.depth_review.gaps[{gap_index}]"
+                            require_fields(gap,("section","issue","why_it_matters","repair","evidence_needed","status","resolution"),gap_label,errors)
+                            if not isinstance(gap,dict): continue
+                            if not isinstance(gap.get("evidence_needed"),bool): errors.append(f"{gap_label}.evidence_needed must be boolean")
+                            if gap.get("status") not in {"repaired","accepted","unresolved"}: errors.append(f"{gap_label}.status is invalid")
+                            if gap.get("status")=="unresolved": errors.append(f"{gap_label} must be repaired or explicitly accepted")
+                            if gap.get("status")=="repaired" and isinstance(changed,list) and str(gap.get("section")) not in {str(value) for value in changed}:
+                                errors.append(f"{gap_label}.section must appear in changed_sections after repair")
+                            if gap.get("evidence_needed") is True:
+                                lookup=gap.get("evidence_lookup")
+                                require_fields(lookup,("question","source","state_updated"),f"{gap_label}.evidence_lookup",errors)
+                                if isinstance(lookup,dict) and not isinstance(lookup.get("state_updated"),bool): errors.append(f"{gap_label}.evidence_lookup.state_updated must be boolean")
+            scope=version.get("revision_scope")
+            if scope=="none":
+                if len(str(version.get("pass_reason","")).strip())<20: errors.append(f"{label}.pass_reason is required when revision_scope is none")
+                if changed: errors.append(f"{label}.changed_sections must be empty when revision_scope is none")
+                if isinstance(depth,dict) and depth.get("gaps"): errors.append(f"{label} cannot use revision_scope none while material gaps remain recorded")
+            elif scope=="targeted" and not changed:
+                errors.append(f"{label}.changed_sections is required for a targeted revision")
+            elif scope=="restructure" and len(str(version.get("restructure_reason","")).strip())<20:
+                errors.append(f"{label}.restructure_reason is required for an exceptional whole-report restructure")
+            if scope=="targeted" and isinstance(changed,list):
+                planned_sections=[str(section.get("title")) for section in plan.get("sections",[]) if isinstance(section,dict) and section.get("role")!="appendix"]
+                if planned_sections and set(planned_sections).issubset(set(str(value) for value in changed)):
+                    warnings.append(f"{label} changes every non-appendix section; use restructure with a concrete reason or preserve unaffected content")
         for defect_index,defect in enumerate(defects):
             defect_label=f"{label}.defects[{defect_index}]"
             require_fields(defect,("id","surface","description","affected_sections","status","resolution","verification"),defect_label,errors)

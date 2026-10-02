@@ -16,7 +16,7 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "enum": ["0.1"]
+      "enum": ["0.1", "0.2"]
     },
     "task": {
       "type": "object",
@@ -213,8 +213,9 @@
         "experiment_summary": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["budget", "experiments_run", "kept", "discarded", "crashed", "invalid", "stopping_reason", "selected_revision", "journal_ref"],
+          "required": ["budget", "experiments_run", "stopping_reason", "journal_ref"],
           "properties": {
+            "format_version": {"type": "string", "enum": ["0.2"]},
             "budget": {"type": "integer", "minimum": 0},
             "experiments_run": {"type": "integer", "minimum": 0},
             "kept": {"type": "integer", "minimum": 0},
@@ -223,7 +224,60 @@
             "invalid": {"type": "integer", "minimum": 0},
             "stopping_reason": {"type": "string", "minLength": 1, "pattern": "\\S"},
             "selected_revision": {"type": ["string", "null"], "pattern": "\\S"},
-            "journal_ref": {"type": "string", "minLength": 1, "pattern": "\\S"}
+            "journal_ref": {"type": "string", "minLength": 1, "pattern": "\\S"},
+            "evaluation_ref": {"type": "string", "minLength": 1, "pattern": "\\S"},
+            "selected_experiment": {
+              "type": ["object", "null"],
+              "additionalProperties": false,
+              "required": ["experiment_id", "candidate_identity"],
+              "properties": {
+                "experiment_id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+                "candidate_identity": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+                "code_revision": {"type": ["string", "null"], "pattern": "\\S"},
+                "config_hash": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+                "prediction_hash": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}
+              }
+            },
+            "candidate_learning_events": {
+              "type": "array",
+              "maxItems": 12,
+              "items": {
+                "type": "string",
+                "enum": [
+                  "evaluation_repaired",
+                  "point_in_time_violation",
+                  "holdout_reuse",
+                  "metric_disagreement",
+                  "duplicate_config",
+                  "duplicate_predictions",
+                  "missing_provenance",
+                  "untracked_evidence",
+                  "selected_experiment_mismatch",
+                  "guardrail_failure",
+                  "repeated_fallback",
+                  "user_rejection",
+                  "major_rework"
+                ]
+              }
+            },
+            "lifecycle": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "research_decision",
+                "evidence_status",
+                "independent_validation_status",
+                "candidate_branch_status",
+                "production_integration_status"
+              ],
+              "properties": {
+                "research_decision": {"type": "string", "enum": ["pending", "accept", "reject"]},
+                "evidence_status": {"type": "string", "enum": ["open", "finalized", "invalid"]},
+                "independent_validation_status": {"type": "string", "enum": ["not_requested", "pending", "passed", "failed", "unavailable"]},
+                "candidate_branch_status": {"type": "string", "enum": ["local", "merged", "unavailable"]},
+                "production_integration_status": {"type": "string", "enum": ["not_started", "pending", "completed", "not_applicable"]}
+              }
+            }
           }
         },
         "decision": {

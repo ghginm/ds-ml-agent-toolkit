@@ -118,11 +118,15 @@ only for a real gap. A finding may add `mechanism` and `affected_scope` when its
 failure path would otherwise be implicit. Prefer these focused additions over a
 larger universal schema.
 
-Then hand the normalized state to the technical-report workflow. That workflow
-creates and reviews the report plan before loading compose-dsml-report. If a
-material finding appears later, update state, increment its revision, identify
-affected plan sections, and recompose them. Never create an `Additional
-Findings` or similar chronology section.
+Then hand the normalized state to the technical-report workflow. Persist enough
+concise claim, source, result, limitation, component, and inspected-artifact
+context for iteration 2 to reason from state rather than rediscover the project.
+That workflow creates and reviews the report plan before loading
+compose-dsml-report. If a specific material gap appears later, identify its
+missing question before reopening the narrowest source, then update state,
+increment its revision, identify affected plan sections, and recompose only
+them. Never rerun broad discovery or create an `Additional Findings` chronology
+section.
 
 ## Evidence and visuals
 

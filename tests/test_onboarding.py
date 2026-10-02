@@ -235,6 +235,44 @@ class OnboardingTests(unittest.TestCase):
             self.assertIn("analyze-dsml-project", status)
             self.assertIn("Resolve the installed-project validation failure", status)
 
+    def test_repair_runtime_restores_only_manifest_owned_files(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            source = base / "clean-overlay"
+            target = base / "installed-project"
+            self.build_overlay(source)
+            shutil.copytree(source, target)
+            project_owned = target / ".agent-system" / "custom-project-note.txt"
+            project_text = "preserve-me\n"
+            project_owned.write_text(project_text, encoding="utf-8")
+            missing = target / ".agent-system" / "CONTROL.md"
+            missing.unlink()
+
+            repaired = onboard_project.repair_runtime(target, source)
+
+            self.assertIn(".agent-system/CONTROL.md", repaired)
+            self.assertEqual(
+                (source / ".agent-system" / "CONTROL.md").read_bytes(),
+                missing.read_bytes(),
+            )
+            self.assertEqual(
+                project_text,
+                project_owned.read_text(encoding="utf-8"),
+            )
+            validation = subprocess.run(
+                [
+                    sys.executable,
+                    "-B",
+                    str(target / ".agent-system" / "tooling" / "validate-kit.py"),
+                    "--installed-project",
+                    str(target),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            self.assertEqual(0, validation.returncode, validation.stdout + validation.stderr)
+
     def test_detected_distributed_compute_does_not_infer_authorization(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / "spark-project"

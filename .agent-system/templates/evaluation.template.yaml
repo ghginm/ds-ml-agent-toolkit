@@ -1,0 +1,37 @@
+{
+  "schema_version": "0.1",
+  "experiment_mode": "adaptive",
+  "candidate_plan": "sequential",
+  "adaptive_evolution": "observed",
+  "selection_objective": {
+    "metric": "Define the model-selection metric.",
+    "direction": "minimize",
+    "minimum_meaningful_delta": null
+  },
+  "secondary_metrics": [],
+  "evaluation": {
+    "strategy": "Define the like-for-like evaluation strategy.",
+    "development_split": "Define the development or selection split.",
+    "final_split": null,
+    "final_split_identity": {
+      "split_id": null,
+      "split_hash": null,
+      "dataset_hash": null,
+      "population_hash": null,
+      "exposure_status": "unavailable"
+    }
+  },
+  "point_in_time": {
+    "enabled": false,
+    "verification_status": "not_applicable",
+    "prediction_cutoff": null,
+    "training_cutoff": null,
+    "feature_available_at": null,
+    "label_available_at": null,
+    "assumptions": []
+  },
+  "stopping": {
+    "minimum_valid_experiments": 6,
+    "plateau_window": 4
+  }
+}

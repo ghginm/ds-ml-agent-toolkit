@@ -4,7 +4,7 @@ description: Independently challenge DS/ML/AML analyses, changes, experiments, a
 license: MIT
 metadata:
   author: "ghgin, Hermes Agent"
-  version: "0.6.2"
+  version: "0.8.0"
 ---
 
 # Validate DS/ML Result

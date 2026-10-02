@@ -73,11 +73,16 @@ class ValidateKitTests(unittest.TestCase):
             ".agent-system/manifest.json",
             ".agent-system/project.template.yaml",
             ".agent-system/schemas/learning.schema.json",
+            ".agent-system/schemas/evaluation.schema.json",
             ".agent-system/schemas/project.schema.json",
             ".agent-system/schemas/run.schema.json",
             ".agent-system/templates/learning.template.yaml",
+            ".agent-system/templates/evaluation.template.yaml",
             ".agent-system/tooling/create-run.py",
+            ".agent-system/tooling/finalize-run.py",
             ".agent-system/tooling/onboard-project.py",
+            ".agent-system/tooling/reconstruct-contract.py",
+            ".agent-system/tooling/record-experiment.py",
             ".agent-system/tooling/validate-kit.py",
             ".agent-system/CONTROL.md",
             ".agent-system/SYSTEM.md",
@@ -287,6 +292,47 @@ class ValidateKitTests(unittest.TestCase):
         }
 
         self.assertEqual([], validate_kit.schema_errors(instance, schema))
+
+    def test_autoresearch_finalization_requires_canonical_sibling_evidence(self) -> None:
+        instance = json.loads(
+            (ROOT / ".agent-system" / "templates" / "run.template.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        instance["results"]["experiment_summary"] = {
+            "budget": 2,
+            "experiments_run": 2,
+            "kept": 1,
+            "discarded": 1,
+            "crashed": 0,
+            "invalid": 0,
+            "stopping_reason": "budget",
+            "selected_revision": "abc123",
+            "journal_ref": "experiments.tsv",
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            run_dir = root / ".agent-system" / "runs" / "canonical-run"
+            run_dir.mkdir(parents=True)
+            run_path = run_dir / "run.yaml"
+            run_path.write_text(json.dumps(instance), encoding="utf-8")
+
+            errors = validate_kit.autoresearch_evidence_errors(instance, run_path, root)
+            self.assertTrue(any("learning.yaml" in error for error in errors), errors)
+            self.assertTrue(any("experiments.tsv" in error for error in errors), errors)
+
+            (run_dir / "learning.yaml").write_text("{}\n", encoding="utf-8")
+            (run_dir / "experiments.tsv").write_text(
+                "experiment\trevision\tprimary_metric\tguardrails\tstatus\tdescription\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                [], validate_kit.autoresearch_evidence_errors(instance, run_path, root)
+            )
+
+            instance["results"]["experiment_summary"]["journal_ref"] = "other.tsv"
+            errors = validate_kit.autoresearch_evidence_errors(instance, run_path, root)
+            self.assertTrue(any("journal_ref must be 'experiments.tsv'" in error for error in errors))
 
     def test_normal_run_template_remains_valid_without_experiment_summary(self) -> None:
         schema = json.loads(
@@ -724,11 +770,14 @@ class ValidateKitTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / "target"
             self.build_overlay(target)
+            subprocess.run(["git", "init", "-q", str(target)], check=True, timeout=60)
             result = subprocess.run(
                 [
                     sys.executable,
                     "-B",
                     str(target / ".agent-system" / "tooling" / "create-run.py"),
+                    "--project-root",
+                    str(target),
                     "--id",
                     "pdf-routing",
                     "--goal",
@@ -780,7 +829,11 @@ class ValidateKitTests(unittest.TestCase):
             {"execution": "not_run", "user_outcome": "unknown", "reason_tags": []},
             learning["outcome"],
         )
-        self.assertEqual("0.3", learning["schema_version"])
+        self.assertEqual("0.4", learning["schema_version"])
+        self.assertEqual(
+            "Not assessed until run finalization.",
+            learning["no_reusable_signal_reason"],
+        )
         self.assertEqual(date.today().isoformat(), learning["timestamp"])
         self.assertEqual(target_version, learning["toolkit_version"])
         self.assertEqual([], errors)
@@ -902,7 +955,7 @@ class ValidateKitTests(unittest.TestCase):
             shutil.copyfile(ROOT / "VERSION", root / "VERSION")
             path = root / ".agents" / "skills" / "execute-dsml-task" / "SKILL.md"
             text = path.read_text(encoding="utf-8").replace(
-                'version: "0.6.2"', 'version: "0.1.0"', 1
+                'version: "0.8.0"', 'version: "0.1.0"', 1
             )
             path.write_text(text, encoding="utf-8")
 
@@ -1053,7 +1106,7 @@ class ValidateKitTests(unittest.TestCase):
         self.assertIn("Markdown and PDF are output formats", analysis_skill)
         self.assertIn("explicit audit request selects `deep-audit`", analysis_skill)
 
-        self.assertLessEqual(len(control.splitlines()), 90)
+        self.assertLessEqual(len(control.splitlines()), 180)
         for heading in (
             "## Start here",
             "## Setup in three steps",
@@ -1115,15 +1168,13 @@ class ValidateKitTests(unittest.TestCase):
 
         for contract_field in (
             "goal",
-            "primary metric",
+            "selection objective",
             "direction",
-            "evaluation command",
-            "extraction",
-            "editable scope",
-            "protected/out-of-scope",
+            "evaluation",
+            "final holdout",
+            "point-in-time",
             "guardrails",
-            "experiment budget",
-            "simplicity policy",
+            "budget",
         ):
             self.assertIn(contract_field, skill.lower())
         self.assertIn("confirm or correct", skill)
@@ -1139,6 +1190,7 @@ class ValidateKitTests(unittest.TestCase):
             "autoresearch-explicit-trigger": "response_only",
             "autoresearch-explicit-proceed-authorization": "run_record",
             "autoresearch-ambiguous-primary-metric": "response_only",
+            "autoresearch-metric-role-inference": "response_only",
         }
         for case_id, artifact_class in expected_cases.items():
             case = cases[case_id]
@@ -1149,12 +1201,16 @@ class ValidateKitTests(unittest.TestCase):
         specified = json.dumps(cases["autoresearch-explicit-trigger"]).lower()
         proceed = json.dumps(cases["autoresearch-explicit-proceed-authorization"]).lower()
         ambiguous = json.dumps(cases["autoresearch-ambiguous-primary-metric"]).lower()
+        metric_roles = json.dumps(cases["autoresearch-metric-role-inference"]).lower()
         self.assertIn("ten-experiment default budget", bare)
         self.assertIn("confirmation", bare)
         self.assertIn("without re-asking", specified)
         self.assertIn("without a redundant question", proceed)
         self.assertIn("both plausible primary metrics", ambiguous)
         self.assertIn("silently choose", ambiguous)
+        self.assertIn("rmse", metric_roles)
+        self.assertIn("reporting or business metric", metric_roles)
+        self.assertIn("metric=fa", skill.lower())
 
     def test_autoresearch_crash_repair_and_larger_hypothesis_contracts(self) -> None:
         skill = (
@@ -1235,6 +1291,30 @@ class ValidateKitTests(unittest.TestCase):
             forbidden = json.dumps(case["forbidden_actions"]).lower()
             for operation in ("stash", "reset", "commit", "clean", "discard"):
                 self.assertIn(operation, forbidden)
+
+    def test_autoresearch_contract_keeps_durable_evidence_at_canonical_root(self) -> None:
+        paths = (
+            ROOT / ".agents" / "skills" / "autoresearch" / "SKILL.md",
+            ROOT / ".agent-system" / "workflows" / "autoresearch.md",
+            ROOT / ".agent-system" / "SYSTEM.md",
+            ROOT / ".agent-system" / "docs" / "LEARNING_LOOP.md",
+        )
+        documents = [path.read_text(encoding="utf-8") for path in paths]
+        for path, text in zip(paths, documents):
+            self.assertIn("canonical", text.lower(), path)
+            self.assertIn("isolated worktree", text.lower(), path)
+            self.assertIn("toolkit", text.lower(), path)
+        skill, workflow, _, learning_loop = documents
+        for text in (skill, workflow):
+            self.assertIn("--project-root", text)
+            self.assertIn("canonical_project_root", text)
+            self.assertIn("experiment_worktree_root", text)
+            self.assertIn("toolkit_root", text)
+            self.assertIn("Run evidence: .agent-system/runs/<run-id>/", text)
+            self.assertIn("experiments.tsv", text)
+        self.assertIn("never recompute", skill)
+        self.assertIn("journal_ref", workflow)
+        self.assertIn("current execution directory", learning_loop)
 
     def test_remote_git_actions_remain_separately_gated_in_autoresearch_case(self) -> None:
         document = json.loads(
@@ -1640,10 +1720,10 @@ class ValidateKitTests(unittest.TestCase):
             shutil.copytree(ROOT / ".agents", root / ".agents")
             path = root / ".agents" / "skills" / "analyze-dsml-project" / "SKILL.md"
             text = path.read_text(encoding="utf-8").replace(
-                'metadata:\n  author: "ghgin, Hermes Agent"\n  version: "0.6.2"',
+                'metadata:\n  author: "ghgin, Hermes Agent"\n  version: "0.8.0"',
                 "metadata: definitely-not-a-mapping",
             )
-            text += '\n  author: "ghgin, Hermes Agent"\n  version: "0.6.2"\n'
+            text += '\n  author: "ghgin, Hermes Agent"\n  version: "0.8.0"\n'
             path.write_text(text, encoding="utf-8")
             errors = validate_kit.validate_skills(root)
         self.assertTrue(any("metadata must be a frontmatter mapping" in error for error in errors))

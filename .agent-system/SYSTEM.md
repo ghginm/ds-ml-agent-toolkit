@@ -69,8 +69,25 @@ availability never grants authorization.
 Tracked or controlled work may create sibling `run.yaml` and `learning.yaml`
 records. Ordinary work does not require them. `run.yaml` holds execution evidence;
 `learning.yaml` holds sparse routing/outcome metadata and at most a few actionable
-signals. See [`docs/LEARNING_LOOP.md`](docs/LEARNING_LOOP.md) for the detailed
+signals. Autoresearch additionally uses `evaluation.yaml`, a content-addressed
+experiment journal, and a project-local cross-run exposure ledger; transactional
+finalization separates research decisions from evidence, independent validation,
+branch, and production-integration state. The toolkit core is project-agnostic:
+runtime validation treats metric names as opaque identifiers, and scientific
+semantics such as direction, guardrail limits, and evaluation strategy enter only
+through the explicit reconstructed contract. See
+[`docs/LEARNING_LOOP.md`](docs/LEARNING_LOOP.md) for the detailed
 maintenance lifecycle.
+
+For autoresearch, keep three roots explicit: `canonical_project_root` is the user's
+initiating repository/worktree and owns durable evidence;
+`experiment_worktree_root` is disposable isolation for candidate source changes,
+commits, evaluation, and rollback; `toolkit_root` supplies toolkit templates and
+version information. Autoresearch may execute in an isolated worktree, but durable
+run evidence belongs to the canonical user project root from which the run was
+initiated. Never use the isolated worktree or toolkit installation as the sole
+evidence location. Relative `.agent-system/runs/...` references are relative to the
+canonical project root, not the process current directory.
 
 ## Adapters and harness integration
 

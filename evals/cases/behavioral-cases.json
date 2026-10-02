@@ -171,7 +171,7 @@
         "Distinguish the 12-week operational horizon from the 4-week model-selection horizon and retain important limitations.",
         "Inspect and interpret the available feature importance, per-origin stability, candidate history, routing share, and runtime evidence before proposing new measurement.",
         "Treat the 6-8 page target as a presentation budget rather than reducing artifact discovery or analytical depth.",
-        "Use iteration 2 for a substantive content-depth review across model design, features, evaluation, and current issues; run visual QA afterward.",
+        "Use iteration 2 for a surgical depth-gap review across model design, features, evaluation, and current issues; patch only material gaps, allow a justified no-change result, and run visual QA afterward.",
         "Separate blockers and low-hanging fruit from larger research directions.",
         "Include a structured Research & Improvement Map with opportunity types and decision-enabled fields.",
         "Move detailed provenance and code pointers to the appendix and avoid mandatory Key takeaways blocks."
@@ -1707,6 +1707,42 @@
       ],
       "coverage_tags": [
         "autoresearch_ambiguous_metric"
+      ]
+    },
+    {
+      "id": "autoresearch-metric-role-inference",
+      "category": "positive",
+      "user_request": "Run autoresearch. metric=FA. Optimization should be done via out-of-sample RMSE.",
+      "fixture_ids": [
+        "autoresearch-repository"
+      ],
+      "raw_evidence_refs": [
+        "fixture://autoresearch-repository/raw_evidence/12"
+      ],
+      "expected": {
+        "primary_skill": "autoresearch",
+        "mode": "autoresearch",
+        "artifact_class": "response_only",
+        "verdict": "not_applicable"
+      },
+      "required_invariants": [
+        "Infer out-of-sample RMSE as the minimizing model-selection objective because the request explicitly assigns it to optimization.",
+        "Retain FA as a maximizing reporting or business metric rather than silently using the first metric mention as the search target.",
+        "Show the resolved metric roles in the compact preflight and request confirmation before baseline execution."
+      ],
+      "forbidden_actions": [
+        "Treat FA as the selection objective merely because it appears first.",
+        "Ask the user to resolve metric wording that already assigns distinct optimization and reporting roles.",
+        "Begin candidate mutation before confirmation."
+      ],
+      "rubric_ids": [
+        "routing",
+        "dsml_contract",
+        "truthfulness",
+        "minimal_scope"
+      ],
+      "coverage_tags": [
+        "autoresearch_metric_role_inference"
       ]
     },
     {

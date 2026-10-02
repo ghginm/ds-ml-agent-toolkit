@@ -4,12 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 import re
 import subprocess
 import sys
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
@@ -84,6 +85,7 @@ REQUIRED_COVERAGE = {
     "autoresearch_explicit",
     "autoresearch_explicit_proceed",
     "autoresearch_ambiguous_metric",
+    "autoresearch_metric_role_inference",
     "autoresearch_implicit",
     "autoresearch_negative_ordinary",
     "autoresearch_negative_bounded",
@@ -372,6 +374,7 @@ COVERAGE_CASE_IDS = {
     "autoresearch_explicit": "autoresearch-explicit-trigger",
     "autoresearch_explicit_proceed": "autoresearch-explicit-proceed-authorization",
     "autoresearch_ambiguous_metric": "autoresearch-ambiguous-primary-metric",
+    "autoresearch_metric_role_inference": "autoresearch-metric-role-inference",
     "autoresearch_implicit": "autoresearch-implicit-trigger",
     "autoresearch_negative_ordinary": "autoresearch-negative-ordinary-development",
     "autoresearch_negative_bounded": "autoresearch-negative-bounded-candidate",
@@ -1087,6 +1090,979 @@ def validate_run_contract(root: Path) -> list[str]:
     return errors
 
 
+def _parse_contract_timestamp(value: Any, field: str) -> datetime:
+    if not nonblank(value):
+        raise ValueError(f"{field} must be a non-blank ISO-8601 timestamp")
+    normalized = value.strip()
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError as exc:
+        raise ValueError(f"{field} must be a real ISO-8601 timestamp") from exc
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _final_split_key(identity: Any) -> tuple[str, str, str] | None:
+    if not isinstance(identity, dict):
+        return None
+    split_hash = identity.get("split_hash")
+    dataset_hash = identity.get("dataset_hash")
+    population_hash = identity.get("population_hash") or ""
+    if not (nonblank(split_hash) and nonblank(dataset_hash)):
+        return None
+    return str(split_hash).strip(), str(dataset_hash).strip(), str(population_hash).strip()
+
+
+def final_exposure_event(run_id: str, identity: dict[str, Any]) -> dict[str, Any] | None:
+    """Build the deterministic protected-final-split exposure event from stable identity.
+
+    Exposure is a scientific event that happens when a protected evaluation
+    population may have been inspected, so the ledger must already consider the
+    split burned before any result exists: ``record-experiment.py
+    --reserve-final-exposure`` commits this event before the protected
+    evaluation is executed, and recording a stage-``final`` result afterwards
+    requires the committed event. The event ID is stable per (run, split) pair,
+    which makes retried reservations idempotent, and the record stores only
+    split/dataset/population hashes — never row-level data. The event's
+    append-only ledger position also fixes the exposure state relevant to its
+    run: a reservation authorizes against the untouched-or-not state at commit
+    time, and later events for the same split cannot retroactively invalidate
+    an already-authorized one-shot evaluation.
+    """
+    split_key = _final_split_key(identity)
+    if split_key is None:
+        return None
+    split_hash, dataset_hash, population_hash = split_key
+    timestamp = (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+    event_material = f"{run_id}\0{split_hash}\0{dataset_hash}\0{population_hash}\0final"
+    return {
+        "event_id": hashlib.sha256(event_material.encode("utf-8")).hexdigest(),
+        "run_id": run_id,
+        "split_id": identity.get("split_id"),
+        "split_hash": split_hash,
+        "dataset_hash": dataset_hash,
+        "population_hash": population_hash or None,
+        "role": "final",
+        "first_exposed_at": timestamp,
+        "exposure_count": 1,
+    }
+
+
+EXECUTION_CONSUMED_KIND = "execution_consumed"
+
+
+def execution_consumed_event(run_id: str, identity: dict[str, Any]) -> dict[str, Any] | None:
+    """Build the deterministic managed-execution-consumed event from stable identity.
+
+    Distinguishes the durable transition from ``exposure reserved`` to
+    ``managed protected-evaluation execution attempt begun`` without
+    conflating them. The event ID is stable per (run, split) pair so a retried
+    managed attempt finds its own prior commit, which is what makes
+    ``--run-protected-evaluation`` reject any subsequent launch for the same
+    protected population regardless of whether the first attempt completed,
+    crashed, failed result handoff, or never recorded a result. The event is
+    appended only by the managed wrapper, only AFTER the reservation is
+    durable, and BEFORE the evaluator subprocess starts — so the ledger
+    position at any crash between commits reflects the exact state of the
+    lifecycle, and a later retry can be refused deterministically.
+    """
+    split_key = _final_split_key(identity)
+    if split_key is None:
+        return None
+    split_hash, dataset_hash, population_hash = split_key
+    timestamp = (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+    event_material = (
+        f"{run_id}\0{split_hash}\0{dataset_hash}\0{population_hash}\0"
+        f"final\0{EXECUTION_CONSUMED_KIND}"
+    )
+    return {
+        "event_id": hashlib.sha256(event_material.encode("utf-8")).hexdigest(),
+        "run_id": run_id,
+        "split_id": identity.get("split_id"),
+        "split_hash": split_hash,
+        "dataset_hash": dataset_hash,
+        "population_hash": population_hash or None,
+        "role": "final",
+        "kind": EXECUTION_CONSUMED_KIND,
+        "consumed_at": timestamp,
+    }
+
+
+def evaluation_semantic_errors(
+    instance: dict[str, Any],
+    path: Path,
+    root: Path,
+    *,
+    ledger_records: list[dict[str, Any]] | None = None,
+) -> list[str]:
+    """Validate scientific invariants that cannot be expressed by the schema subset."""
+    name = relative_name(path, root)
+    errors: list[str] = []
+    mode = instance.get("experiment_mode")
+    candidate_plan = instance.get("candidate_plan")
+    adaptive_evolution = instance.get("adaptive_evolution")
+    if mode == "benchmark" and adaptive_evolution not in {None, "not_applicable"}:
+        errors.append(f"{name}: benchmark mode must use adaptive_evolution='not_applicable'")
+    if mode == "adaptive" and candidate_plan == "predeclared" and adaptive_evolution != "not_observed":
+        errors.append(
+            f"{name}: a predeclared adaptive sweep must be benchmark mode or explicitly record adaptive_evolution='not_observed'"
+        )
+
+    objective = instance.get("selection_objective")
+    objective = objective if isinstance(objective, dict) else {}
+    objective_metric = objective.get("metric")
+    objective_name = (
+        _canonical_metric_name(str(objective_metric)) if nonblank(objective_metric) else ""
+    )
+    secondary = instance.get("secondary_metrics")
+    if isinstance(secondary, list):
+        metrics: set[str] = set()
+        for item in secondary:
+            if not isinstance(item, dict):
+                continue
+            metric = item.get("metric")
+            normalized = _canonical_metric_name(str(metric)) if nonblank(metric) else ""
+            if normalized in metrics:
+                errors.append(f"{name}: secondary metric {metric!r} is duplicated")
+            elif normalized and normalized == objective_name:
+                errors.append(
+                    f"{name}: secondary metric {metric!r} collides with the selection objective after canonicalization"
+                )
+            metrics.add(normalized)
+            if item.get("role") == "guardrail" and item.get("max_degradation") is None:
+                errors.append(
+                    f"{name}: guardrail metric {metric!r} requires max_degradation"
+                )
+
+    point_in_time = instance.get("point_in_time")
+    point_in_time = point_in_time if isinstance(point_in_time, dict) else {}
+    enabled = point_in_time.get("enabled") is True
+    verification = point_in_time.get("verification_status")
+    assumptions = point_in_time.get("assumptions")
+    if enabled and verification == "verified":
+        parsed: dict[str, datetime] = {}
+        for field in (
+            "prediction_cutoff",
+            "training_cutoff",
+            "feature_available_at",
+            "label_available_at",
+        ):
+            try:
+                parsed[field] = _parse_contract_timestamp(point_in_time.get(field), field)
+            except ValueError as exc:
+                errors.append(f"{name}: {exc}")
+        if len(parsed) == 4:
+            if parsed["training_cutoff"] > parsed["prediction_cutoff"]:
+                errors.append(
+                    f"{name}: training_cutoff must be <= prediction_cutoff; fitting on data after the prediction cutoff leaks the future"
+                )
+            if parsed["feature_available_at"] > parsed["prediction_cutoff"]:
+                errors.append(
+                    f"{name}: feature_available_at must be <= prediction_cutoff for point-in-time safety"
+                )
+            if parsed["label_available_at"] > parsed["training_cutoff"]:
+                errors.append(
+                    f"{name}: label_available_at must be <= training_cutoff; earlier row/origin ordering does not prove label availability"
+                )
+    elif enabled and verification == "unverified":
+        if not isinstance(assumptions, list) or not assumptions or any(
+            not nonblank(item) for item in assumptions
+        ):
+            errors.append(
+                f"{name}: unverified point-in-time safety requires explicit non-blank assumptions"
+            )
+    elif enabled:
+        errors.append(
+            f"{name}: enabled point-in-time checks require verification_status verified or unverified"
+        )
+    elif verification != "not_applicable":
+        errors.append(
+            f"{name}: disabled point-in-time checks must use verification_status='not_applicable'"
+        )
+
+    evaluation = instance.get("evaluation")
+    evaluation = evaluation if isinstance(evaluation, dict) else {}
+    identity = evaluation.get("final_split_identity")
+    identity = identity if isinstance(identity, dict) else {}
+    exposure_status = identity.get("exposure_status")
+    split_key = _final_split_key(identity)
+    if exposure_status == "untouched" and split_key is None:
+        errors.append(
+            f"{name}: an untouched final split requires stable split_hash and dataset_hash identity"
+        )
+    if exposure_status == "untouched" and split_key is not None:
+        # A reservation event establishes the exposure status of its own run AT
+        # COMMIT TIME, in append-only ledger order. Skip entries belonging to the
+        # same run, and skip other runs' entries that were committed AFTER this
+        # run's own reservation: a later exposure cannot retroactively change
+        # the untouched state this run was authorized against. Entries that
+        # precede the run's own reservation (or every entry, when the run never
+        # reserved) disqualify the untouched claim.
+        records = ledger_records or []
+        current_run_id = path.parent.name if path.name == "evaluation.yaml" else None
+        own_index: int | None = None
+        if current_run_id:
+            own_event = final_exposure_event(current_run_id, identity)
+            if own_event is not None:
+                for index, record in enumerate(records):
+                    if record.get("event_id") == own_event["event_id"]:
+                        own_index = index
+                        break
+        for index, record in enumerate(records):
+            if current_run_id is not None and record.get("run_id") == current_run_id:
+                continue
+            if own_index is not None and index > own_index:
+                continue
+            record_key = _final_split_key(record)
+            if record_key == split_key and record.get("role") == "final":
+                errors.append(
+                    f"{name}: final split was previously exposed and must not be described as untouched"
+                )
+                break
+    return errors
+
+
+EXPERIMENT_STATUSES = {
+    "baseline",
+    "promoted_to_holdout",
+    "final_selected",
+    "rejected",
+    "duplicate",
+    "invalid",
+    "crashed",
+}
+EVALUATED_STATUSES = EXPERIMENT_STATUSES - {"duplicate", "invalid", "crashed"}
+NOVEL_EXPERIMENT_STATUSES = EVALUATED_STATUSES - {"baseline"}
+EXPERIMENT_STAGES = {"development", "selection", "final"}
+CANDIDATE_EVENT_TYPES = {
+    "evaluation_repaired",
+    "point_in_time_violation",
+    "holdout_reuse",
+    "metric_disagreement",
+    "duplicate_config",
+    "duplicate_predictions",
+    "missing_provenance",
+    "untracked_evidence",
+    "selected_experiment_mismatch",
+    "guardrail_failure",
+    "repeated_fallback",
+    "user_rejection",
+    "major_rework",
+}
+EXPERIMENT_HASH_FIELDS = (
+    "candidate_identity",
+    "config_hash",
+    "runner_hash",
+    "input_manifest_hash",
+    "prediction_hash",
+)
+EXPERIMENT_JOURNAL_FIELDS = (
+    "experiment_id",
+    "parent_experiment_id",
+    "stage",
+    "candidate_identity",
+    "code_revision",
+    "config_hash",
+    "runner_hash",
+    "input_manifest_hash",
+    "prediction_hash",
+    "selection_metric",
+    "selection_value",
+    "metrics_json",
+    "guardrail_status",
+    "status",
+    "hypothesis",
+    "expected_mechanism",
+    "change_summary",
+    "result_summary",
+    "next_hypothesis_rationale",
+    "meaningful_improvement",
+    "materially_new_evidence",
+    "artifact_ref",
+)
+
+
+def _canonical_metric_name(value: str) -> str:
+    """Syntactic metric-identifier canonicalization shared by every metric surface.
+
+    Collapses whitespace/separator/case variants into one identifier and nothing
+    else. Metric semantics — direction, role, and evaluation context such as
+    out-of-sample or holdout — belong to the explicit evaluation contract or to
+    request reconstruction, never to this function.
+    """
+    return re.sub(r"[\s\-_]+", "", value.strip()).lower()
+
+
+def _normalized_metrics(raw: dict[Any, Any]) -> tuple[dict[str, float], list[tuple[str, str]]]:
+    """Canonicalize metric dictionary keys; report raw-key pairs that collide on one identity."""
+    metrics: dict[str, float] = {}
+    sources: dict[str, str] = {}
+    collisions: list[tuple[str, str]] = []
+    for key, value in raw.items():
+        name = _canonical_metric_name(str(key))
+        if name in sources:
+            collisions.append((sources[name], str(key)))
+            continue
+        sources[name] = str(key)
+        metrics[name] = float(value)
+    return metrics, collisions
+
+
+def is_protected_final_evaluation(row: dict[str, str]) -> bool:
+    """The reserved protected-final evaluation role is never another adaptive trial."""
+    return row.get("stage", "").strip() == "final"
+
+
+def novel_experiment_count(rows: list[dict[str, str]]) -> int:
+    """Canonical budget/counter accounting shared by every autoresearch surface.
+
+    The baseline is the frozen reference measurement established before search
+    begins; it never consumes the novel experiment budget. Duplicate, invalid,
+    and crashed candidates never count, and neither does the protected stage:
+    evaluating the promoted frozen candidate once on the reserved final
+    population is the terminal scientific evaluation of an already-counted
+    research candidate, not a new research experiment. ``record-experiment.py``,
+    plateau stopping, ``run.yaml`` counters, and ``finalize-run.py`` validation
+    all use this single definition so enforcement and documentation cannot
+    diverge.
+    """
+    return sum(
+        1
+        for row in rows
+        if row.get("status") in NOVEL_EXPERIMENT_STATUSES
+        and not is_protected_final_evaluation(row)
+    )
+
+
+def guardrail_findings(
+    evaluation: dict[str, Any],
+    baseline_metrics: dict[str, float],
+    candidate_metrics: dict[str, float],
+) -> tuple[list[str], list[str]]:
+    """Mechanically compare every declared guardrail against its baseline.
+
+    Guardrail semantics come entirely from the explicit contract fields
+    ``metric``/``direction``/``max_degradation``; metric names are opaque and the
+    comparison is independent of whether the primary objective improved. Returns
+    ``(violations, missing_evidence)``.
+    """
+    violations: list[str] = []
+    missing: list[str] = []
+    baseline_reference = {_canonical_metric_name(str(k)): v for k, v in baseline_metrics.items()}
+    candidate_reference = {_canonical_metric_name(str(k)): v for k, v in candidate_metrics.items()}
+    secondary = evaluation.get("secondary_metrics")
+    for item in secondary if isinstance(secondary, list) else []:
+        if not isinstance(item, dict) or item.get("role") != "guardrail":
+            continue
+        guardrail = item.get("metric")
+        if not nonblank(guardrail):
+            continue
+        guardrail_name = _canonical_metric_name(str(guardrail))
+        baseline_value = baseline_reference.get(guardrail_name)
+        candidate_value = candidate_reference.get(guardrail_name)
+        if baseline_value is None or candidate_value is None:
+            missing.append(f"guardrail {guardrail_name} lacks baseline or candidate evidence")
+            continue
+        degradation = (
+            candidate_value - baseline_value
+            if item.get("direction") == "minimize"
+            else baseline_value - candidate_value
+        )
+        allowed = item.get("max_degradation")
+        if isinstance(allowed, (int, float)) and degradation > float(allowed):
+            violations.append(
+                f"guardrail {guardrail_name} degraded by {degradation:g}, exceeding {float(allowed):g}"
+            )
+    return violations, missing
+
+
+PROMOTED_FINAL_PROVENANCE_FIELDS = (
+    "code_revision",
+    "config_hash",
+    "runner_hash",
+    "input_manifest_hash",
+)
+
+
+def promoted_frozen_anchor(
+    rows: list[dict[str, str]], final_row: dict[str, str]
+) -> dict[str, str] | None:
+    """Return the promoted row whose frozen candidate this stage-final row re-evaluates.
+
+    Mechanical candidate-freezing evidence: the stage-``final`` row must repeat the
+    exact ``candidate_identity`` of an earlier ``promoted_to_holdout`` row recorded
+    outside the protected stage, and every immutable provenance field that the
+    promoted row declares must appear unchanged on the final row. Prediction
+    identity is population-specific and is deliberately excluded: the same frozen
+    candidate scored on the protected population produces different predictions,
+    and that difference is the point of the final evaluation, not a mutation.
+    ``rows`` must not already contain ``final_row``.
+    """
+    if final_row.get("stage", "").strip() != "final":
+        return None
+    identity = final_row.get("candidate_identity", "").strip()
+    if not identity:
+        return None
+    for prior in rows:
+        if prior.get("status", "").strip() != "promoted_to_holdout":
+            continue
+        if prior.get("stage", "").strip() == "final":
+            continue
+        if prior.get("candidate_identity", "").strip() != identity:
+            continue
+        if any(
+            prior.get(field, "").strip()
+            and prior.get(field, "").strip() != final_row.get(field, "").strip()
+            for field in PROMOTED_FINAL_PROVENANCE_FIELDS
+        ):
+            continue
+        return prior
+    return None
+
+
+PROTECTED_FINAL_OUTCOME_STATUSES = {"final_selected", "rejected", "invalid", "crashed"}
+
+
+def is_promoted_protected_final_reuse(
+    rows: list[dict[str, str]], final_row: dict[str, str]
+) -> bool:
+    """True when a stage-final row is an AUTHORIZED protected re-evaluation of the
+    promoted frozen candidate, not a repeated adaptive experiment.
+
+    Duplicate detection answers "is this an unauthorized repeat of already
+    evaluated experimental evidence?"; the final row's status answers the
+    separate question "what happened when the frozen promoted candidate met the
+    protected population?". The two must not be conflated, so authorization is
+    decided purely by mechanics and NEVER by whether the outcome is positive:
+    the row plays the protected-final evaluation role (stage ``final`` with any
+    supported final outcome status — ``final_selected``, ``rejected``,
+    ``invalid``, or ``crashed``; guardrail failure is a ``rejected`` outcome
+    with ``guardrail_status='fail'``), an anchored frozen candidate exists, and
+    no OTHER evidence-claiming journal row already carries its candidate/config
+    identity or any row already carries its prediction hash. A negative final
+    outcome is still the legitimate protected evaluation of the promoted
+    candidate and must keep its real status; a second query against the same
+    protected population, a mutated candidate, or copied development predictions
+    are still duplicates. Downgraded `duplicate` rows and failed
+    `invalid`/`crashed` rows claim no scientific evidence, so they do not
+    consume the frozen candidate's protected-final role. The reservation and
+    one-shot ledger/budget gates are enforced around this predicate at record
+    time by ``record-experiment.py``; this function is the identity/role half of
+    the authorization. ``rows`` must not already contain ``final_row``.
+    """
+    if final_row.get("status", "").strip() not in PROTECTED_FINAL_OUTCOME_STATUSES:
+        return False
+    anchor = promoted_frozen_anchor(rows, final_row)
+    if anchor is None:
+        return False
+    for prior in rows:
+        claims_evidence = prior.get("status", "").strip() in EVALUATED_STATUSES
+        for field in ("candidate_identity", "config_hash"):
+            value = final_row.get(field, "").strip()
+            if (
+                value
+                and claims_evidence
+                and prior is not anchor
+                and prior.get(field, "").strip() == value
+            ):
+                return False
+        value = final_row.get("prediction_hash", "").strip()
+        if value and prior.get("prediction_hash", "").strip() == value:
+            return False
+    return True
+
+
+def duplicate_reason(
+    rows: list[dict[str, str]], candidate: dict[str, str]
+) -> str | None:
+    """Return the first content-addressed duplicate class for a proposed candidate.
+
+    Identity is the candidate material plus its evaluation context: the sole
+    exception is the legitimate protected re-evaluation of a promoted frozen
+    candidate (``is_promoted_protected_final_reuse``), which is a new
+    scientific evaluation role, not a duplicate research experiment.
+    """
+    reuse = candidate.get("stage", "").strip() == "final" and is_promoted_protected_final_reuse(
+        rows, candidate
+    )
+    for field, reason in (
+        ("candidate_identity", "candidate_identity"),
+        ("config_hash", "config_hash"),
+        ("prediction_hash", "prediction_hash"),
+    ):
+        value = candidate.get(field, "").strip()
+        if value and any(row.get(field, "").strip() == value for row in rows):
+            if reuse and reason != "prediction_hash":
+                continue
+            return reason
+    return None
+
+
+def plateau_stop_recommended(
+    rows: list[dict[str, Any]], evaluation: dict[str, Any]
+) -> bool:
+    """Recommend conservative early stopping after enough valid, low-information trials."""
+    stopping = evaluation.get("stopping")
+    stopping = stopping if isinstance(stopping, dict) else {}
+    minimum = stopping.get("minimum_valid_experiments", 6)
+    window = stopping.get("plateau_window", 4)
+    if not isinstance(minimum, int) or not isinstance(window, int):
+        return False
+    valid = [
+        row
+        for row in rows
+        if row.get("status") in NOVEL_EXPERIMENT_STATUSES
+        and not is_protected_final_evaluation(row)
+    ]
+    if len(valid) < minimum:
+        return False
+    search_rows = [
+        row
+        for row in rows
+        if row.get("status") != "baseline" and not is_protected_final_evaluation(row)
+    ]
+    if len(search_rows) < window:
+        return False
+    recent = search_rows[-window:]
+    return all(
+        row.get("status") == "duplicate"
+        or (
+            row.get("meaningful_improvement", "false").lower() != "true"
+            and row.get("materially_new_evidence", "false").lower() != "true"
+        )
+        for row in recent
+    )
+
+
+def experiment_journal_errors(
+    rows: list[dict[str, str]],
+    evaluation: dict[str, Any],
+    selected_experiment: dict[str, Any] | None,
+) -> list[str]:
+    """Validate immutable experiment identity, lifecycle, and adaptive lineage."""
+    errors: list[str] = []
+    experiment_ids: dict[str, list[dict[str, str]]] = {}
+    seen_identity: dict[str, str] = {}
+    seen_config: dict[str, str] = {}
+    seen_prediction: dict[str, str] = {}
+    metrics_by_experiment: dict[str, dict[str, float]] = {}
+    mode = evaluation.get("experiment_mode")
+    selection_objective = evaluation.get("selection_objective")
+    selection_objective = (
+        selection_objective if isinstance(selection_objective, dict) else {}
+    )
+    expected_metric = selection_objective.get("metric")
+    expected_metric = (
+        _canonical_metric_name(str(expected_metric)) if nonblank(expected_metric) else ""
+    )
+    for index, row in enumerate(rows):
+        experiment_id = row.get("experiment_id", "").strip()
+        if not experiment_id:
+            errors.append(f"journal row {index + 1}: experiment_id is mandatory")
+            continue
+        experiment_ids.setdefault(experiment_id, []).append(row)
+        status = row.get("status", "").strip()
+        if status not in EXPERIMENT_STATUSES:
+            errors.append(
+                f"journal experiment {experiment_id}: unsupported lifecycle status {status!r}"
+            )
+        stage = row.get("stage", "").strip()
+        if stage and stage not in EXPERIMENT_STAGES:
+            errors.append(
+                f"journal experiment {experiment_id}: stage {stage!r} must be one of {sorted(EXPERIMENT_STAGES)}"
+            )
+        for field in EXPERIMENT_HASH_FIELDS:
+            value = row.get(field, "").strip()
+            if value and re.fullmatch(r"[0-9a-f]{64}", value) is None:
+                errors.append(
+                    f"journal experiment {experiment_id}: {field} must be a lowercase SHA-256 hash when present"
+                )
+        if not row.get("candidate_identity", "").strip():
+            errors.append(
+                f"journal experiment {experiment_id}: candidate_identity is mandatory"
+            )
+        # The one legitimate identity reuse: the reserved protected evaluation of
+        # the promoted frozen candidate repeating its candidate/config identity
+        # under a different evaluation role. Every other repeat stays evidence
+        # that the same adaptive experiment was run twice.
+        final_role_reuse = stage == "final" and is_promoted_protected_final_reuse(
+            rows[:index], row
+        )
+        for field, seen in (
+            ("candidate_identity", seen_identity),
+            ("config_hash", seen_config),
+            ("prediction_hash", seen_prediction),
+        ):
+            value = row.get(field, "").strip()
+            if not value:
+                continue
+            previous = seen.get(value)
+            if (
+                previous is not None
+                and status != "duplicate"
+                and not (final_role_reuse and field != "prediction_hash")
+            ):
+                errors.append(
+                    f"journal experiment {experiment_id}: duplicate {field} already evaluated by {previous}; status must be 'duplicate'"
+                )
+            else:
+                seen.setdefault(value, experiment_id)
+        guardrail_status = row.get("guardrail_status", "").strip()
+        if guardrail_status not in {"pass", "fail", "not_applicable", "unverified"}:
+            errors.append(
+                f"journal experiment {experiment_id}: invalid guardrail_status {guardrail_status!r}"
+            )
+        selection_metric = row.get("selection_metric", "").strip()
+        if status not in {"duplicate", "invalid", "crashed"}:
+            if not selection_metric:
+                errors.append(
+                    f"journal experiment {experiment_id}: selection_metric is mandatory for evaluated candidates"
+                )
+            elif expected_metric and _canonical_metric_name(selection_metric) != expected_metric:
+                errors.append(
+                    f"journal experiment {experiment_id}: selection_metric {selection_metric!r} does not match evaluation objective {expected_metric!r}"
+                )
+        metrics: dict[str, float] = {}
+        metrics_text = row.get("metrics_json", "").strip()
+        if metrics_text:
+            try:
+                parsed_metrics = json.loads(
+                    metrics_text,
+                    object_pairs_hook=_strict_object,
+                    parse_constant=_reject_json_constant,
+                )
+            except (TypeError, ValueError) as exc:
+                errors.append(
+                    f"journal experiment {experiment_id}: metrics_json is invalid: {exc}"
+                )
+                parsed_metrics = {}
+            if not isinstance(parsed_metrics, dict):
+                errors.append(
+                    f"journal experiment {experiment_id}: metrics_json must contain an object"
+                )
+            else:
+                invalid_values = [
+                    metric_name
+                    for metric_name, metric_value in parsed_metrics.items()
+                    if isinstance(metric_value, bool)
+                    or not isinstance(metric_value, (int, float))
+                ]
+                for metric_name in invalid_values:
+                    errors.append(
+                        f"journal experiment {experiment_id}: metrics_json value for {metric_name!r} must be numeric"
+                    )
+                if not invalid_values:
+                    metrics, collisions = _normalized_metrics(parsed_metrics)
+                    for first, second in collisions:
+                        errors.append(
+                            f"journal experiment {experiment_id}: metrics_json keys {first!r} and {second!r} collide on one canonical metric identity and are ambiguous evidence"
+                        )
+        selection_value = row.get("selection_value", "").strip()
+        if selection_metric and selection_value:
+            try:
+                numeric_selection = float(selection_value)
+            except ValueError:
+                errors.append(
+                    f"journal experiment {experiment_id}: selection_value must be numeric"
+                )
+            else:
+                selection_name = _canonical_metric_name(selection_metric)
+                if selection_name in metrics and metrics[selection_name] != numeric_selection:
+                    errors.append(
+                        f"journal experiment {experiment_id}: selection_value {numeric_selection:g} disagrees with metrics_json {metrics[selection_name]:g} for metric {selection_name}"
+                    )
+                metrics.setdefault(selection_name, numeric_selection)
+        metrics_by_experiment[experiment_id] = metrics
+        parent = row.get("parent_experiment_id", "").strip()
+        if (
+            mode == "adaptive"
+            and index > 0
+            and status not in {"duplicate", "crashed", "invalid", "baseline"}
+        ):
+            if not parent:
+                errors.append(
+                    f"journal experiment {experiment_id}: adaptive experiment requires parent_experiment_id"
+                )
+            for field in (
+                "hypothesis",
+                "expected_mechanism",
+                "change_summary",
+                "result_summary",
+                "next_hypothesis_rationale",
+            ):
+                if not row.get(field, "").strip():
+                    errors.append(
+                        f"journal experiment {experiment_id}: adaptive experiment requires {field}"
+                    )
+    for experiment_id, matches in experiment_ids.items():
+        if len(matches) > 1:
+            errors.append(
+                f"journal experiment_id {experiment_id!r} is ambiguous ({len(matches)} rows)"
+            )
+    all_ids = set(experiment_ids)
+    first_position: dict[str, int] = {}
+    for index, row in enumerate(rows):
+        row_id = row.get("experiment_id", "").strip()
+        if row_id:
+            first_position.setdefault(row_id, index)
+    for row in rows:
+        experiment_id = row.get("experiment_id", "").strip()
+        parent = row.get("parent_experiment_id", "").strip()
+        if not parent:
+            continue
+        if parent == experiment_id:
+            errors.append(
+                f"journal experiment {experiment_id}: parent_experiment_id cannot reference the experiment itself"
+            )
+        elif parent not in all_ids:
+            errors.append(
+                f"journal experiment {experiment_id}: parent_experiment_id {parent!r} does not exist"
+            )
+        elif first_position[parent] >= first_position.get(experiment_id, len(rows)):
+            errors.append(
+                f"journal experiment {experiment_id}: parent_experiment_id {parent!r} must appear "
+                "earlier in the journal; an experiment may only build on evidence available before "
+                "it was proposed, which also makes causal cycles impossible"
+            )
+
+    for index, row in enumerate(rows):
+        if (
+            row.get("stage", "").strip() == "final"
+            and row.get("status", "").strip() in EVALUATED_STATUSES
+            and promoted_frozen_anchor(rows[:index], row) is None
+        ):
+            errors.append(
+                f"journal experiment {row.get('experiment_id')}: a stage='final' evaluation "
+                "must re-evaluate the previously promoted frozen candidate; no earlier "
+                "promoted_to_holdout row carries this candidate_identity with its "
+                "immutable provenance unchanged"
+            )
+
+    final_evaluated_rows = [
+        row
+        for row in rows
+        if row.get("stage", "").strip() == "final"
+        and row.get("status", "").strip() in EVALUATED_STATUSES
+    ]
+    if len(final_evaluated_rows) > 1:
+        final_ids = ", ".join(
+            str(row.get("experiment_id")) for row in final_evaluated_rows
+        )
+        errors.append(
+            f"journal experiments {final_ids}: a run may record at most one evaluated "
+            "stage='final' experiment; repeated queries against the protected population "
+            "are selection data, not one-shot final evidence"
+        )
+
+    baseline_row = next((row for row in rows if row.get("status") == "baseline"), None)
+    baseline_id = baseline_row.get("experiment_id", "") if baseline_row is not None else ""
+    baseline_metrics = (
+        metrics_by_experiment.get(baseline_id, {}) if baseline_row is not None else {}
+    )
+    declared_guardrails = [
+        item
+        for item in (evaluation.get("secondary_metrics") or [])
+        if isinstance(item, dict) and item.get("role") == "guardrail"
+    ]
+    for row in rows:
+        experiment_id = row.get("experiment_id", "")
+        if experiment_id == baseline_id or row.get("status") not in EVALUATED_STATUSES:
+            continue
+        candidate_metrics = metrics_by_experiment.get(experiment_id, {})
+        violations, missing = guardrail_findings(
+            evaluation, baseline_metrics, candidate_metrics
+        )
+        if baseline_row is None and declared_guardrails:
+            missing = [
+                "the evaluation contract declares guardrails but no baseline experiment "
+                "provides reference metrics"
+            ]
+        guardrail_status = row.get("guardrail_status", "").strip()
+        if violations and guardrail_status != "fail":
+            for violation in violations:
+                errors.append(
+                    f"journal experiment {experiment_id}: {violation}; guardrail_status must be 'fail' — a manual pass does not override mechanical evidence"
+                    if guardrail_status == "pass"
+                    else f"journal experiment {experiment_id}: {violation}; guardrail_status must be 'fail'"
+                )
+        elif declared_guardrails and guardrail_status == "pass" and missing:
+            errors.append(
+                f"journal experiment {experiment_id}: guardrail_status 'pass' claims measured evidence while declared guardrails are unverified: {missing[0]}"
+            )
+
+    if selected_experiment is None:
+        return errors
+    selected_id = selected_experiment.get("experiment_id")
+    matches = experiment_ids.get(str(selected_id), [])
+    if len(matches) != 1:
+        errors.append(
+            f"selected experiment_id {selected_id!r} must resolve to exactly one journal entry"
+        )
+        return errors
+    selected_row = matches[0]
+    selected_identity = selected_experiment.get("candidate_identity")
+    if not nonblank(selected_identity):
+        errors.append(
+            f"selected experiment {selected_id}: candidate_identity is required so the selection resolves to recorded immutable evidence"
+        )
+    elif str(selected_identity) != selected_row.get("candidate_identity", ""):
+        errors.append(
+            f"selected experiment {selected_id}: candidate_identity mismatch with journal entry"
+        )
+    for field in ("code_revision", "config_hash", "prediction_hash"):
+        selected_value = selected_experiment.get(field)
+        if selected_value is not None and str(selected_value) != selected_row.get(field, ""):
+            errors.append(
+                f"selected experiment {selected_id}: {field} mismatch with journal entry"
+            )
+    if selected_row.get("status") != "final_selected":
+        errors.append(
+            f"selected experiment {selected_id}: journal status must be 'final_selected'"
+        )
+    selected_guardrail_status = selected_row.get("guardrail_status", "").strip()
+    if declared_guardrails:
+        if selected_guardrail_status != "pass":
+            errors.append(
+                f"selected experiment {selected_id}: mandatory guardrails must pass before final selection"
+            )
+    elif selected_guardrail_status not in {"pass", "not_applicable"}:
+        errors.append(
+            f"selected experiment {selected_id}: the evaluation contract declares no guardrails, "
+            "so guardrail_status must be 'not_applicable' — there is nothing declared to pass or fail"
+        )
+    return errors
+
+
+def load_evaluation_ledger(root: Path) -> tuple[list[dict[str, Any]], list[str]]:
+    """Load append-only split exposure events without row-level data."""
+    path = root / ".agent-system" / "evaluation-ledger.jsonl"
+    if not path.exists():
+        return [], []
+    if path.is_symlink() or not path.is_file():
+        return [], [".agent-system/evaluation-ledger.jsonl must be a regular file"]
+    records: list[dict[str, Any]] = []
+    errors: list[str] = []
+    seen_event_ids: set[str] = set()
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(
+                line,
+                object_pairs_hook=_strict_object,
+                parse_constant=_reject_json_constant,
+            )
+        except (TypeError, ValueError) as exc:
+            errors.append(
+                f".agent-system/evaluation-ledger.jsonl:{line_number}: invalid JSON: {exc}"
+            )
+            continue
+        if not isinstance(record, dict):
+            errors.append(
+                f".agent-system/evaluation-ledger.jsonl:{line_number}: record must be an object"
+            )
+            continue
+        if record.get("role") not in {"development", "selection", "final"}:
+            errors.append(
+                f".agent-system/evaluation-ledger.jsonl:{line_number}: invalid role"
+            )
+        kind = record.get("kind")
+        if kind is not None and kind not in {"execution_consumed"}:
+            errors.append(
+                f".agent-system/evaluation-ledger.jsonl:{line_number}: "
+                f"invalid event kind {kind!r}"
+            )
+        if _final_split_key(record) is None:
+            errors.append(
+                f".agent-system/evaluation-ledger.jsonl:{line_number}: split_hash and dataset_hash are required"
+            )
+        event_id = record.get("event_id")
+        if nonblank(event_id):
+            if str(event_id) in seen_event_ids:
+                errors.append(
+                    f".agent-system/evaluation-ledger.jsonl:{line_number}: duplicate exposure event_id {event_id!r}"
+                )
+            seen_event_ids.add(str(event_id))
+        records.append(record)
+    return records, errors
+
+
+def read_experiment_journal(path: Path, root: Path) -> tuple[list[dict[str, str]], list[str]]:
+    """Read the canonical TSV journal with an exact, stable header."""
+    name = relative_name(path, root)
+    try:
+        text = read_text_checked(path, root)
+    except (OSError, UnicodeError, ValueError) as exc:
+        return [], [f"{name}: unreadable experiment journal: {exc}"]
+    reader = csv.DictReader(text.splitlines(), delimiter="\t")
+    if tuple(reader.fieldnames or ()) != EXPERIMENT_JOURNAL_FIELDS:
+        return [], [
+            f"{name}: journal header must exactly match the current experiment identity contract"
+        ]
+    rows: list[dict[str, str]] = []
+    for index, row in enumerate(reader, 1):
+        if None in row or any(value is None for value in row.values()):
+            return [], [f"{name}: journal row {index} has the wrong number of columns"]
+        rows.append({key: value or "" for key, value in row.items() if key is not None})
+    return rows, []
+
+
+def validate_evaluation_contract(root: Path) -> list[str]:
+    """Validate evaluation templates and opted-in per-run contracts."""
+    errors: list[str] = []
+    schema_path = root / ".agent-system" / "schemas" / "evaluation.schema.json"
+    try:
+        schema = load_json(schema_path, root)
+    except (OSError, ValueError) as exc:
+        return [
+            f"{relative_name(schema_path, root)}: invalid JSON Schema document: {exc}"
+        ]
+    errors.extend(
+        f"{relative_name(schema_path, root)}: {item}"
+        for item in schema_definition_errors(schema)
+    )
+    ledger_records, ledger_errors = load_evaluation_ledger(root)
+    errors.extend(ledger_errors)
+    template = root / ".agent-system" / "templates" / "evaluation.template.yaml"
+    candidates = [template]
+    runs_dir = root / ".agent-system" / "runs"
+    if runs_dir.exists():
+        candidates.extend(sorted(runs_dir.rglob("evaluation.yaml")))
+    for path in candidates:
+        try:
+            instance = load_json(path, root)
+        except (OSError, ValueError) as exc:
+            errors.append(
+                f"{relative_name(path, root)}: invalid JSON-compatible YAML: {exc}"
+            )
+            continue
+        errors.extend(
+            f"{relative_name(path, root)}: {item}"
+            for item in schema_errors(instance, schema)
+        )
+        if isinstance(instance, dict):
+            records = [] if path.resolve() == template.resolve() else ledger_records
+            errors.extend(
+                evaluation_semantic_errors(
+                    instance, path, root, ledger_records=records
+                )
+            )
+    return errors
+
+
 def learning_semantic_errors(
     instance: dict[str, Any], path: Path, root: Path
 ) -> list[str]:
@@ -1127,7 +2103,7 @@ def learning_semantic_errors(
     topics = request.get("topics") if isinstance(request, dict) else None
     if isinstance(topics, list) and len(topics) != len(set(topics)):
         errors.append(f"{name}: request topics must not contain duplicates")
-    if instance.get("schema_version") in {"0.2", "0.3"}:
+    if instance.get("schema_version") in {"0.2", "0.3", "0.4"}:
         missing_initial = {"initial_skill", "initial_mode"} - routing.keys()
         if missing_initial:
             errors.append(
@@ -1148,7 +2124,8 @@ def learning_semantic_errors(
             errors.append(
                 f"{name}: schema_version {instance.get('schema_version')} requires a toolkit_version"
             )
-    is_v03 = instance.get("schema_version") == "0.3"
+    schema_version = instance.get("schema_version")
+    is_v03 = schema_version in {"0.3", "0.4"}
     signals = instance.get("signals") or []
     if is_v03:
         outcome_value = instance.get("outcome")
@@ -1164,7 +2141,17 @@ def learning_semantic_errors(
         if isinstance(reason_tags, list) and len(reason_tags) != len(set(reason_tags)):
             errors.append(f"{name}: outcome reason_tags must not contain duplicates")
         if isinstance(signals, list) and len(signals) > 3:
-            errors.append(f"{name}: schema_version 0.3 allows at most 3 signals")
+            errors.append(f"{name}: schema_version {schema_version} allows at most 3 signals")
+    if schema_version == "0.4":
+        reason = instance.get("no_reusable_signal_reason")
+        if isinstance(signals, list) and not signals and not nonblank(reason):
+            errors.append(
+                f"{name}: schema_version 0.4 requires no_reusable_signal_reason when signals is empty"
+            )
+        if isinstance(signals, list) and signals and reason is not None:
+            errors.append(
+                f"{name}: no_reusable_signal_reason must be omitted when reusable signals exist"
+            )
     for signal_index, signal in enumerate(signals):
         if not isinstance(signal, dict):
             continue
@@ -1289,6 +2276,120 @@ def _policy_capability_sets(root: Path, policy_ref: Any) -> dict[str, set[str]]:
     }
 
 
+def autoresearch_evidence_errors(
+    instance: dict[str, Any], path: Path, root: Path
+) -> list[str]:
+    """Cross-validate canonical autoresearch evidence and selected identity."""
+    results = instance.get("results")
+    summary = results.get("experiment_summary") if isinstance(results, dict) else None
+    if not isinstance(summary, dict):
+        if instance.get("schema_version") == "0.2":
+            return [
+                f"{relative_name(path, root)}: run schema_version 0.2 requires results.experiment_summary with the current experiment contract"
+            ]
+        return []
+    name = relative_name(path, root)
+    errors: list[str] = []
+    runs_root = root / ".agent-system" / "runs"
+    try:
+        canonical_parent = path.parent.resolve(strict=True)
+        canonical_runs_root = runs_root.resolve(strict=True)
+    except OSError:
+        canonical_parent = path.parent.resolve()
+        canonical_runs_root = runs_root.resolve()
+    if canonical_parent.parent != canonical_runs_root:
+        errors.append(
+            f"{name}: autoresearch run.yaml must be directly under the canonical .agent-system/runs directory"
+        )
+    if summary.get("journal_ref") != "experiments.tsv":
+        errors.append(f"{name}: autoresearch journal_ref must be 'experiments.tsv'")
+    is_current = summary.get("format_version") == "0.2"
+    if instance.get("schema_version") == "0.2" and not is_current:
+        errors.append(
+            f"{name}: run schema_version 0.2 requires experiment_summary.format_version '0.2'"
+        )
+    sibling_names = ["learning.yaml", "experiments.tsv"]
+    if is_current:
+        sibling_names.append("evaluation.yaml")
+        if summary.get("evaluation_ref") != "evaluation.yaml":
+            errors.append(f"{name}: current autoresearch evaluation_ref must be 'evaluation.yaml'")
+    for sibling_name in sibling_names:
+        sibling = path.parent / sibling_name
+        if sibling.is_symlink() or not sibling.is_file():
+            errors.append(
+                f"{name}: autoresearch requires canonical sibling {sibling_name}"
+            )
+    if not is_current or errors:
+        return errors
+
+    evaluation_path = path.parent / "evaluation.yaml"
+    journal_path = path.parent / "experiments.tsv"
+    try:
+        evaluation = load_json(evaluation_path, root)
+    except (OSError, ValueError) as exc:
+        errors.append(f"{name}: cannot load evaluation contract: {exc}")
+        return errors
+    rows, journal_errors = read_experiment_journal(journal_path, root)
+    errors.extend(journal_errors)
+    selected = summary.get("selected_experiment")
+    errors.extend(
+        f"{name}: {error}"
+        for error in experiment_journal_errors(
+            rows,
+            evaluation if isinstance(evaluation, dict) else {},
+            selected if isinstance(selected, dict) else None,
+        )
+    )
+    lifecycle = summary.get("lifecycle")
+    lifecycle = lifecycle if isinstance(lifecycle, dict) else {}
+    evidence_status = lifecycle.get("evidence_status")
+    research_decision = lifecycle.get("research_decision")
+    if evidence_status == "finalized":
+        if research_decision == "accept" and not isinstance(selected, dict):
+            errors.append(
+                f"{name}: finalized accepted research requires selected_experiment identity"
+            )
+        if summary.get("stopping_reason") == "not_started":
+            errors.append(f"{name}: finalized evidence requires a real stopping_reason")
+        evaluation_block = evaluation.get("evaluation")
+        identity = (
+            evaluation_block.get("final_split_identity")
+            if isinstance(evaluation_block, dict)
+            else None
+        )
+        key = _final_split_key(identity)
+        final_evaluated = any(
+            row.get("stage") == "final" and row.get("status") in EVALUATED_STATUSES
+            for row in rows
+        )
+        if key is not None and final_evaluated:
+            ledger_records, ledger_errors = load_evaluation_ledger(root)
+            errors.extend(f"{name}: {error}" for error in ledger_errors)
+            if not any(
+                _final_split_key(record) == key
+                and record.get("role") == "final"
+                and record.get("run_id") == path.parent.name
+                for record in ledger_records
+            ):
+                errors.append(
+                    f"{name}: finalized evidence inspected a protected final split without a recorded exposure event"
+                )
+    novel_count = novel_experiment_count(rows)
+    if summary.get("experiments_run") != novel_count:
+        errors.append(
+            f"{name}: experiments_run must count valid novel experiments and exclude the baseline plus duplicate/invalid/crashed rows"
+        )
+    budget = summary.get("budget")
+    if isinstance(budget, int) and not isinstance(budget, bool) and novel_count > budget:
+        errors.append(
+            f"{name}: budget_consumed {novel_count} exceeds the hard experiment budget {budget}"
+        )
+    events = summary.get("candidate_learning_events")
+    if isinstance(events, list) and len(events) != len(set(events)):
+        errors.append(f"{name}: candidate_learning_events must not contain duplicates")
+    return errors
+
+
 def run_semantic_errors(instance: dict[str, Any], path: Path, root: Path) -> list[str]:
     """Reject run records whose approval or claim semantics are inconsistent."""
     errors: list[str] = []
@@ -1339,6 +2440,7 @@ def run_semantic_errors(instance: dict[str, Any], path: Path, root: Path) -> lis
 
     results = instance.get("results")
     results = results if isinstance(results, dict) else {}
+    errors.extend(autoresearch_evidence_errors(instance, path, root))
     execution = instance.get("execution")
     execution = execution if isinstance(execution, dict) else {}
     provenance = instance.get("provenance")
@@ -1855,6 +2957,7 @@ def validate_installed_project(root: Path) -> list[str]:
         lambda value: validate_skills(value, require_exact_core=False),
         validate_policy,
         validate_run_contract,
+        validate_evaluation_contract,
         validate_learning_contract,
         validate_project_config,
         validate_adapters,
@@ -1914,6 +3017,7 @@ def validate_repository(root: Path = ROOT) -> list[str]:
         validate_markdown_links,
         validate_policy,
         validate_run_contract,
+        validate_evaluation_contract,
         validate_learning_contract,
         validate_project_config,
         validate_evals,

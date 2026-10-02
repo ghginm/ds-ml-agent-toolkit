@@ -147,6 +147,8 @@ class ReportCompositionTests(unittest.TestCase):
                 "changed_sections":["Evaluation Architecture"] if version==2 else [],
                 "verification":"Rechecked the named review surfaces against the revised source.",
             })
+            if version>2:
+                versions[-1]["pass_reason"]="The prior targeted revision remains adequate after the requested follow-up review."
             if version==2:
                 versions[-1]["depth_review"]={
                     "focus_reviews":[{"focus":"evaluation","missing_supported_insight":"Fold variation was underinterpreted."}],
@@ -180,18 +182,83 @@ class ReportCompositionTests(unittest.TestCase):
         warnings=validator.validate_state(state)[1]
         self.assertTrue(any("feature_groups[0]" in warning and "descriptive-only" in warning for warning in warnings))
 
-    def test_review_log_v02_requires_complete_semantic_depth_audit(self):
-        plan=self.depth_plan(iterations=2); review=self.review_log(2); review["schema_version"]="0.2"
-        focus_review=review["versions"][1]["depth_review"]["focus_reviews"][0]
-        focus_review["focus"]="features"
+    def surgical_review(self,scope="targeted",evidence_needed=False):
+        review=self.review_log(2); review["schema_version"]="0.3"
+        version=review["versions"][1]
+        version["revision_scope"]=scope
+        version["defects"]=[] if scope=="none" else version["defects"]
+        version["changed_sections"]=[] if scope=="none" else ["Feature Engineering"]
+        if scope=="none":
+            version["pass_reason"]="V1 already covers the material reasoning and evidence limits for the requested focus."
+            version["depth_review"]["underused_evidence"]=[]
+            version["depth_review"]["missing_supported_insights"]=[]
+        focus_review=version["depth_review"]["focus_reviews"][0]
         focus_review.update({
-            "assessment":"revised",
-            "checked_dimensions":sorted(validator.DEPTH_REVIEW_DIMENSIONS),
-            "revisions":["Added mechanism, evidence status, and implication bullets."],
+            "focus":"features","assessment":"pass" if scope=="none" else "revised",
+            "checked_dimensions":sorted(validator.CORE_DEPTH_DIMENSIONS|{"applicability","failure_modes"}),
+            "relevant_conditional_dimensions":["applicability","failure_modes"],
+            "revisions":[] if scope=="none" else ["Added expected signal and failure conditions."],
         })
+        gap={
+            "section":"Feature Engineering",
+            "issue":"Expected signal is unexplained.",
+            "why_it_matters":"The reader cannot assess when the feature should work.",
+            "repair":"Add rationale and likely failure conditions.",
+            "evidence_needed":evidence_needed,
+            "status":"repaired",
+            "resolution":"Patched only Feature Engineering with the missing reasoning.",
+        }
+        if evidence_needed:
+            gap["evidence_lookup"]={
+                "question":"Does the seasonal feature improve frozen-split error?",
+                "source":"artifacts/seasonal_ablation.csv",
+                "state_updated":True,
+            }
+        version["depth_review"]["gaps"]=[] if scope=="none" else [gap]
+        return review
+
+    def test_review_log_uses_core_and_relevant_conditional_dimensions(self):
+        plan=self.depth_plan(iterations=2); review=self.surgical_review()
         self.assertEqual([],validator.validate_review_log(plan,review)[0])
-        focus_review["checked_dimensions"].remove("claim_type_separation")
-        self.assertTrue(any("checked_dimensions is incomplete" in error for error in validator.validate_review_log(plan,review)[0]))
+        compatible=json.loads(json.dumps(review)); compatible["schema_version"]="0.2"
+        compatible["versions"][1]["depth_review"].pop("gaps")
+        self.assertEqual([],validator.validate_review_log(plan,compatible)[0])
+        focus_review=review["versions"][1]["depth_review"]["focus_reviews"][0]
+        self.assertNotIn("interactions",focus_review["checked_dimensions"])
+        focus_review["checked_dimensions"].remove("mechanism")
+        self.assertTrue(any("missing core dimensions" in error for error in validator.validate_review_log(plan,review)[0]))
+
+    def test_iteration_two_patches_only_the_section_with_a_material_gap(self):
+        plan=self.depth_plan(iterations=2); review=self.surgical_review()
+        errors,_=validator.validate_review_log(plan,review)
+        self.assertEqual([],errors)
+        self.assertEqual(["Feature Engineering"],review["versions"][1]["changed_sections"])
+        self.assertEqual(1,len(review["versions"][1]["depth_review"]["gaps"]))
+
+    def test_iteration_two_allows_no_change_with_pass_reason(self):
+        plan=self.depth_plan(iterations=2); review=self.surgical_review(scope="none")
+        self.assertEqual([],validator.validate_review_log(plan,review)[0])
+        del review["versions"][1]["pass_reason"]
+        self.assertTrue(any("pass_reason" in error for error in validator.validate_review_log(plan,review)[0]))
+
+    def test_missing_empirical_evidence_requires_a_narrow_lookup_record(self):
+        plan=self.depth_plan(iterations=2); review=self.surgical_review(evidence_needed=True)
+        self.assertEqual([],validator.validate_review_log(plan,review)[0])
+        del review["versions"][1]["depth_review"]["gaps"][0]["evidence_lookup"]
+        self.assertTrue(any("evidence_lookup" in error for error in validator.validate_review_log(plan,review)[0]))
+
+    def test_whole_document_targeted_rewrite_is_visible(self):
+        plan=self.depth_plan(iterations=2); review=self.surgical_review()
+        review["versions"][1]["changed_sections"]=[
+            section["title"] for section in plan["sections"] if section["role"]!="appendix"
+        ]
+        warnings=validator.validate_review_log(plan,review)[1]
+        self.assertTrue(any("changes every non-appendix section" in warning for warning in warnings))
+
+    def test_iteration_two_contract_forbids_broad_rediscovery(self):
+        workflow=(ROOT/".agent-system/workflows/technical-report.md").read_text(encoding="utf-8")
+        self.assertIn("Do not repeat broad repository discovery",workflow)
+        self.assertIn("inspect the narrowest relevant",workflow)
 
     def test_source_consistency_detects_wrong_or_injected_pdf_content(self):
         source="# Report\n\nThe model uses verified lag features. Evidence is limited."

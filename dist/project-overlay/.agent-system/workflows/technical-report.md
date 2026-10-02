@@ -1,5 +1,11 @@
 # Technical report workflow
 
+At a glance: iteration 1 investigates the project, builds normalized evidence,
+plans, and writes V1. Iteration 2 reads V1 plus that persisted state, scans for
+only material depth gaps, and patches affected sections; it reopens project
+evidence only for a specific unresolved question. Then validators run, PDF
+rendering occurs, and visual/layout QA is handled separately.
+
 ## Trigger and controls
 
 Use for an explicit technical report or technical PDF report. A request for an
@@ -48,22 +54,31 @@ plausibility as project-specific empirical support.
    request and set its status to `reviewed`.
 4. Use `compose-dsml-report` to compose an editable semantic source. The plan,
    not discovery order or internal registers, controls the table of contents.
-5. In iteration 2, review every requested focus for missing supported insight,
-   descriptive-only treatment, unused artifacts, absent comparisons,
-   underinterpretation, unsupported context, oversimplified mechanisms,
-   missing applicability or failure conditions, omitted interactions,
-   theoretical claims presented as observed facts, absent empirical-support
-   status, conclusions without implications, and research directions lost
-   through compression. Record the checked dimensions and focus assessment,
-   then make a substantive targeted content revision. For later versions, critique
-   architecture, technical content, synthesis/clarity, and section balance.
-6. Record actionable defects, affected sections/pages, resolution, and
-   verification. Patch affected content/layout when practical. Restructure the
-   whole report only when its information architecture is wrong.
-7. If new evidence arrives, update state and plan, identify impacted sections,
-   recompose them, and rerun relevant checks. Never append an `Additional
-   Findings` dump.
-8. Run structural/semantic validation. For PDF, render to page images, run
+5. Iteration 2 is a surgical depth-revision pass, not a second analysis and not
+   a second composition. Start from V1, normalized state, the reviewed plan,
+   prior validator/review results, and already extracted evidence. Run a compact
+   semantic depth-gap scan across every requested focus, record only material
+   gaps, select the high-value repairs, and patch only their affected sections.
+   A substantive review is mandatory; rewriting is not. `revision_scope: none`
+   is valid when the gap list is empty and a concise `pass_reason` explains why.
+6. Check mechanism, empirical-support status, evidence interpretation, and
+   implication wherever analytical claims exist. Check assumptions,
+   applicability, failure modes, interactions, claim-type separation, and
+   omitted-state reasoning only when relevant. Use descriptive-only and
+   inventory-without-interpretation as defect detectors, not mandatory fields.
+7. Do not repeat broad repository discovery, data-flow tracing, spreadsheet
+   inspection, artifact enumeration, metric extraction, or source analysis in
+   iteration 2. If a specific material gap cannot be resolved from normalized
+   state, state the exact missing question, inspect the narrowest relevant
+   source, update state when needed, and patch only the affected section.
+8. Preserve sections that pass. Do not regenerate tables or figures, rewrite
+   for stylistic variation, or restructure merely because a cleaner layout
+   exists. `revision_scope: restructure` is exceptional and requires the
+   information architecture itself to prevent adequate coverage.
+9. Record actionable defects, affected sections/pages, resolution, and
+   verification. For later versions, critique architecture, technical content,
+   synthesis/clarity, redundancy, and section balance.
+10. Run structural/semantic validation. For PDF, render to page images, run
    automated preflight, visually inspect every page, repair defects, rerender,
    and verify repairs. Pass the persisted Markdown source and requested page
    bounds to PDF QA. A source/PDF semantic mismatch blocks completion. Multiple
@@ -99,8 +114,9 @@ available evidence is mapped and used, existing artifacts were mined before
 recommending new measurement, material claims are traceable, the stable
 architecture answers the request, unsupported generic content and duplicate
 findings are absent, the Research & Improvement Map and low-hanging fruit appear
-when supported, iteration 2 materially deepens content, aggregate metrics are
-contextualized when deeper evidence exists, final consistency passes, and a
-delivered PDF has a final defect-free or explicitly accepted page-image review.
+when supported, iteration 2 completes a substantive depth review and repairs or
+dispositions every material gap, aggregate metrics are contextualized when
+deeper evidence exists, final consistency passes, and a delivered PDF has a
+final defect-free or explicitly accepted page-image review.
 Expose the final report and optionally its semantic source; keep internal state,
 plans, review logs, and temporary renders out of normal delivery.

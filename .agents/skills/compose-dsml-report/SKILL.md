@@ -4,7 +4,7 @@ description: Compose stable DS/ML technical reports from normalized analysis sta
 license: MIT
 metadata:
   author: "ghgin, Hermes Agent"
-  version: "0.6.2"
+  version: "0.8.0"
 ---
 
 # Compose DS/ML Report
@@ -83,21 +83,40 @@ truth. Include `<!-- dsml-report-state-revision: ... -->` and
 
 ## Review and targeted revision
 
-Critique architecture separately from technical content. Iteration 2 must be a
-content-depth review across every requested focus and must make a substantive
-revision; formatting and visual QA do not consume it. Name specific defects,
-affected sections, and intended repairs. Patch only affected material when the
-architecture is sound; restructure when it is not. After late evidence, update
-state and plan first, then recompose impacted sections. Do not append a
-chronological catch-all.
+Iteration 2 is a surgical depth-revision pass, not a second analysis and not a
+second composition. Read V1, normalized state, the reviewed plan, prior
+validator/review results, and extracted evidence. Before editing, produce a
+compact internal gap list with `section`, `issue`, `why_it_matters`,
+`repair`, and `evidence_needed`. Include only material defects. Then select
+the repairs, patch their affected sections, and preserve everything that passes.
 
-For every requested focus in iteration 2, explicitly inspect descriptive-only
-coverage, inventory without interpretation, missing mechanism or assumptions,
-missing applicability or failure conditions, omitted interactions, absent
-empirical-support status, theoretical claims phrased as project facts, omitted
-state reasoning, evidence listed without interpretation, and conclusions whose
-implication is left to the reader. Depth is semantic: tables, evidence IDs,
-word count, or many implementation facts do not make a section deep.
+For each requested focus, normally check mechanism, empirical-support status,
+evidence interpretation, and implication. Check assumptions, applicability,
+failure modes, interactions, claim-type separation, and omitted-state reasoning
+only when relevant. Use descriptive-only coverage and inventory without
+interpretation as defect detectors. Do not fill a matrix with meaningless
+checks. Depth remains semantic: determine why a choice might work, its signal
+or mechanism, regimes and assumptions when material, ways it may fail,
+alternative explanations, evaluation limits, and what results do and do not
+establish.
+
+Do not repeat broad repository discovery, data-flow tracing, spreadsheet
+inspection, artifact enumeration, metric extraction, or source-code analysis.
+If normalized state cannot resolve a material gap, first record the exact
+missing question, inspect the narrowest relevant file or artifact, update state
+if needed, and patch only the affected section. Never rerun broad analysis.
+
+A substantive review is mandatory; a revision is not. Use review-log schema
+0.3 for the explicit gap list. Mark each gap `repaired` or `accepted` with
+a concise resolution; when evidence is needed, record the exact question,
+narrow source, and whether normalized state was updated. Use
+`revision_scope: none` with an empty gap list, empty `changed_sections`, and
+a concise `pass_reason` when V1 already passes. Targeted patching is the
+default. Do not rewrite for stylistic variation or regenerate tables/figures
+without a gap that requires it. Use `restructure` only when information
+architecture prevents adequate coverage, and record that reason. Keep PDF
+rendering and layout repair after semantic validation; layout-only defects do
+not trigger another analytical pass.
 
 Validate the source and review evidence:
 

@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:dsml-agent-kit:evaluation-schema:0.1",
+  "title": "Executable autoresearch evaluation contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "experiment_mode",
+    "selection_objective",
+    "secondary_metrics",
+    "evaluation",
+    "point_in_time",
+    "stopping"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "enum": ["0.1"]},
+    "experiment_mode": {"type": "string", "enum": ["benchmark", "adaptive"]},
+    "candidate_plan": {"type": "string", "enum": ["predeclared", "sequential", "mixed"]},
+    "adaptive_evolution": {"type": "string", "enum": ["observed", "not_observed", "not_applicable"]},
+    "selection_objective": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metric", "direction", "minimum_meaningful_delta"],
+      "properties": {
+        "metric": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "direction": {"type": "string", "enum": ["minimize", "maximize"]},
+        "minimum_meaningful_delta": {"type": ["number", "null"], "minimum": 0}
+      }
+    },
+    "secondary_metrics": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["metric", "role", "direction", "max_degradation"],
+        "properties": {
+          "metric": {"type": "string", "minLength": 1, "pattern": "\\S"},
+          "role": {"type": "string", "enum": ["reporting", "guardrail"]},
+          "direction": {"type": "string", "enum": ["minimize", "maximize"]},
+          "max_degradation": {"type": ["number", "null"], "minimum": 0},
+          "conventional_output_independent": {"type": "boolean"}
+        }
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy", "development_split", "final_split", "final_split_identity"],
+      "properties": {
+        "strategy": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "development_split": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "final_split": {"type": ["string", "null"], "pattern": "\\S"},
+        "final_split_identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["split_id", "split_hash", "dataset_hash", "population_hash", "exposure_status"],
+          "properties": {
+            "split_id": {"type": ["string", "null"], "pattern": "\\S"},
+            "split_hash": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+            "dataset_hash": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+            "population_hash": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+            "exposure_status": {"type": "string", "enum": ["untouched", "previously_exposed", "unavailable"]}
+          }
+        }
+      }
+    },
+    "point_in_time": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "verification_status",
+        "prediction_cutoff",
+        "training_cutoff",
+        "feature_available_at",
+        "label_available_at",
+        "assumptions"
+      ],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "verification_status": {"type": "string", "enum": ["verified", "unverified", "not_applicable"]},
+        "prediction_cutoff": {"type": ["string", "null"], "pattern": "\\S"},
+        "training_cutoff": {"type": ["string", "null"], "pattern": "\\S"},
+        "feature_available_at": {"type": ["string", "null"], "pattern": "\\S"},
+        "label_available_at": {"type": ["string", "null"], "pattern": "\\S"},
+        "assumptions": {"type": "array", "items": {"type": "string", "pattern": "\\S"}}
+      }
+    },
+    "stopping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimum_valid_experiments", "plateau_window"],
+      "properties": {
+        "minimum_valid_experiments": {"type": "integer", "minimum": 5},
+        "plateau_window": {"type": "integer", "minimum": 4}
+      }
+    }
+  }
+}
