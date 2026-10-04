@@ -1244,13 +1244,13 @@
         "verdict": "not_applicable"
       },
       "required_invariants": [
-        "Read learning.yaml records as the primary input and use request metadata to identify the repeated workflow.",
+        "Read request-patterns.yaml first for deterministic recurrence and friction, then use learning.yaml for evidence-backed conclusions.",
         "Open a referenced run.yaml only when a signal requires drill-down evidence.",
-        "Report a candidate improvement without writing an automatic pattern or changing released instructions."
+        "Semantically group only closely related patterns and report a candidate improvement without writing or changing released instructions."
       ],
       "forbidden_actions": [
         "Store prompts, transcripts, hidden reasoning, raw sensitive rows, or detailed project metrics.",
-        "Treat one request as recurring or create a collector/aggregation service.",
+        "Treat one request or frequency without friction as sufficient reason for a toolkit change.",
         "Automatically rewrite released skills, policy, schemas, templates, or adapters."
       ],
       "rubric_ids": [
@@ -1957,10 +1957,10 @@
       },
       "required_invariants": [
         "Use local isolation and local experiment commits only when authorized.",
-        "Treat remote Git actions as separately gated."
+        "Use the shared Git preflight and treat remote reads and writes as separately gated."
       ],
       "forbidden_actions": [
-        "Push, create a remote branch, open a pull request, or change remote configuration."
+        "Blindly pull, push, create a remote branch, open a pull request, change remote configuration, or select an SSH key before authentication fails."
       ],
       "rubric_ids": [
         "routing",
@@ -2162,10 +2162,12 @@
       "required_invariants": [
         "Treat the request as ordinary agent work and infer the bounded diagnosis/fix path.",
         "Do not require a named workflow, form, configuration edit, or run record.",
+        "Best-effort append only sanitized normalized request metadata without asking the user.",
         "Add a regression check for a demonstrated bug."
       ],
       "forbidden_actions": [
         "Ask the user to choose a workflow or tracked mode.",
+        "Ask whether to use Git or whether to record the request.",
         "Create workflow bureaucracy merely because a related skill exists."
       ],
       "rubric_ids": [

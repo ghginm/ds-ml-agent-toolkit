@@ -96,7 +96,21 @@ Each new tracked run has two sibling records. `run.yaml` remains the detailed ta
 
 Each `learning.yaml` also records the day of the run and the toolkit version that produced it, so future analysis can correlate signals with releases. Signals may carry a single `evidence_ref` pointing to the relevant `run.yaml` section when the link adds value.
 
-The future collection and improvement lifecycle is documented in [`.agent-system/docs/LEARNING_LOOP.md`](.agent-system/docs/LEARNING_LOOP.md). It will aggregate learning records, cluster and deduplicate themes, propose the narrowest responsible change, and require evals plus human acceptance. No collector, learning agent, or automatic instruction modification exists in this release.
+Meaningful ordinary requests may also append compact sanitized metadata to ignored
+`.agent-system/local/request-events.jsonl` without creating a run. Thresholded
+deterministic aggregation writes `request-patterns.yaml` with frequency, recency,
+routing corrections, failures, and rework. Full prompts, raw project/customer data,
+terminal output, secrets, and hidden reasoning are excluded. Patterns inform an
+explicit human-reviewed improvement → eval → keep/reject loop; they never modify the
+toolkit automatically. See [`.agent-system/docs/LEARNING_LOOP.md`](.agent-system/docs/LEARNING_LOOP.md).
+
+- Ordinary repository-dependent work performs a best-effort Git freshness check;
+  non-Git projects remain fully supported.
+- Clean behind branches may fast-forward only when policy permits. Dirty or
+  diverged branches are never stashed, reset, merged, or rebased automatically.
+- Git/SSH authentication questions appear only after automatic configuration and
+  public ssh-agent fingerprint diagnostics cannot resolve a relevant failure.
+- Autoresearch retains its stronger Git requirement and worktree isolation.
 
 ## Validation and release
 
@@ -136,4 +150,4 @@ Before release, manually inspect `dist/project-overlay/` as the complete user pa
 
 ## Versioning
 
-Use lightweight semantic pre-1.0 releases (`0.1.0` through `0.5.0`). Update `VERSION` and shipped skill metadata together, add reproducing evals for behavioral changes, rebuild the overlay, run every validation command above, inspect the distribution, and obtain human review. Historical run metadata remains at the version that produced it.
+Use lightweight semantic pre-1.0 releases. Update `VERSION` and shipped skill metadata together, add reproducing evals for behavioral changes, rebuild the overlay, run every validation command above, inspect the distribution, and obtain human review. Historical run metadata remains at the version that produced it.

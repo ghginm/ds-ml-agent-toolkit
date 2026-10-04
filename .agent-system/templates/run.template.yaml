@@ -26,7 +26,7 @@
   "provenance": {
     "repository": {
       "revision": null,
-      "working_tree": "Record the inspected state when available.",
+      "working_tree": "not_applicable",
       "diff_ref": null
     },
     "project_map_version": null,

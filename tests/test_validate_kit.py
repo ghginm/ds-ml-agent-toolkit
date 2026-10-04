@@ -73,6 +73,8 @@ class ValidateKitTests(unittest.TestCase):
             ".agent-system/manifest.json",
             ".agent-system/project.template.yaml",
             ".agent-system/schemas/learning.schema.json",
+            ".agent-system/schemas/request-event.schema.json",
+            ".agent-system/schemas/request-patterns.schema.json",
             ".agent-system/schemas/evaluation.schema.json",
             ".agent-system/schemas/project.schema.json",
             ".agent-system/schemas/run.schema.json",
@@ -80,10 +82,15 @@ class ValidateKitTests(unittest.TestCase):
             ".agent-system/templates/evaluation.template.yaml",
             ".agent-system/tooling/create-run.py",
             ".agent-system/tooling/finalize-run.py",
+            ".agent-system/tooling/git_preflight.py",
             ".agent-system/tooling/onboard-project.py",
+            ".agent-system/tooling/record-request.py",
             ".agent-system/tooling/reconstruct-contract.py",
             ".agent-system/tooling/record-experiment.py",
+            ".agent-system/tooling/request_events.py",
+            ".agent-system/tooling/review-requests.py",
             ".agent-system/tooling/validate-kit.py",
+            ".agent-system/local/.gitignore",
             ".agent-system/CONTROL.md",
             ".agent-system/SYSTEM.md",
             ".agent-system/docs/LEARNING_LOOP.md",
@@ -105,6 +112,163 @@ class ValidateKitTests(unittest.TestCase):
         self.assertNotIn(".agent-system/onboarding-status.md", first_files)
         self.assertNotIn(".agent-system/project.yaml", first_files)
         self.assertNotIn(".agent-system/policy/capability-policy.yaml", first_files)
+        self.assertNotIn(".agent-system/local/request-events.jsonl", first_files)
+        self.assertNotIn(".agent-system/local/request-patterns.yaml", first_files)
+
+    def test_installed_validation_does_not_create_missing_local_state(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "target"
+            self.build_overlay(target)
+            local = target / ".agent-system" / "local"
+            shutil.rmtree(local)
+
+            validate_kit.validate_installed_project(target)
+
+            self.assertFalse(local.exists())
+
+    def test_installed_validator_accepts_valid_aggregate_prefix_with_newer_events(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "target"
+            self.build_overlay(target)
+            record = ROOT / "tooling" / "record-request.py"
+            for index in range(4):
+                review_every = "3" if index < 3 else "100"
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        "-B",
+                        str(record),
+                        "--project-root",
+                        str(target),
+                        "--kind",
+                        "technical_report",
+                        "--topic",
+                        "model_evaluation",
+                        "--deliverable",
+                        "pdf",
+                        "--route",
+                        "technical-report",
+                        "--outcome",
+                        "completed",
+                        "--event-id",
+                        f"prefix-event-{index}",
+                        "--timestamp",
+                        f"2026-10-0{index + 1}T12:00:00Z",
+                        "--review-every",
+                        review_every,
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=60,
+                )
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+            errors = validate_kit.validate_installed_project(target)
+
+        self.assertFalse(any("request-patterns.yaml is stale" in error for error in errors), errors)
+
+    def test_installed_project_validates_deterministic_request_patterns_when_present(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "target"
+            self.build_overlay(target)
+            record = target / ".agent-system" / "tooling" / "record-request.py"
+            for index in range(3):
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        "-B",
+                        str(record),
+                        "--project-root",
+                        str(target),
+                        "--kind",
+                        "technical_report",
+                        "--topic",
+                        "model_evaluation",
+                        "--deliverable",
+                        "pdf",
+                        "--route",
+                        "technical-report",
+                        "--outcome",
+                        "completed",
+                        "--event-id",
+                        f"event-{index}",
+                        "--timestamp",
+                        f"2026-10-0{index + 1}T12:00:00Z",
+                        "--review-every",
+                        "3",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=60,
+                )
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+            self.assertEqual([], validate_kit.validate_installed_project(target))
+            patterns_path = target / ".agent-system" / "local" / "request-patterns.yaml"
+            patterns = json.loads(patterns_path.read_text(encoding="utf-8"))
+            patterns["source_event_count"] = 99
+            patterns_path.write_text(json.dumps(patterns, indent=2) + "\n", encoding="utf-8")
+            errors = validate_kit.validate_installed_project(target)
+
+        self.assertTrue(
+            any("exceeds the request-event ledger length" in error for error in errors),
+            errors,
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "target"
+            self.build_overlay(target)
+            record = target / ".agent-system" / "tooling" / "record-request.py"
+            review = target / ".agent-system" / "tooling" / "review-requests.py"
+            for index in range(3):
+                result = subprocess.run(
+                    [
+                        sys.executable, "-B", str(record),
+                        "--project-root", str(target),
+                        "--kind", "technical_report",
+                        "--topic", "model_evaluation",
+                        "--deliverable", "pdf",
+                        "--route", "technical-report",
+                        "--outcome", "completed",
+                        "--event-id", f"event-{index}",
+                        "--timestamp", f"2026-10-0{index + 1}T12:00:00Z",
+                        "--review-every", "3",
+                    ],
+                    capture_output=True, text=True, check=False, timeout=60,
+                )
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            subprocess.run(
+                [
+                    sys.executable, "-B", str(record),
+                    "--project-root", str(target),
+                    "--kind", "technical_report",
+                    "--topic", "model_evaluation",
+                    "--deliverable", "pdf",
+                    "--route", "technical-report",
+                    "--outcome", "completed",
+                    "--event-id", "event-3",
+                    "--timestamp", "2026-10-04T12:00:00Z",
+                    "--review-every", "100",
+                ],
+                capture_output=True, text=True, check=False, timeout=60,
+            )
+            force = subprocess.run(
+                [sys.executable, "-B", str(review), "--project-root", str(target), "--force", "--minimum-count", "3"],
+                capture_output=True, text=True, check=False, timeout=60,
+            )
+            self.assertEqual(0, force.returncode, force.stdout + force.stderr)
+            patterns_path = target / ".agent-system" / "local" / "request-patterns.yaml"
+            patterns = json.loads(patterns_path.read_text(encoding="utf-8"))
+            pattern = patterns["patterns"][0]
+            pattern["count"] = pattern["count"] + 1
+            patterns["source_event_count"] = 3
+            patterns["reviewed_through"] = pattern["last_seen"]
+            patterns_path.write_text(json.dumps(patterns, indent=2) + "\n", encoding="utf-8")
+            errors = validate_kit.validate_installed_project(target)
+
+        self.assertTrue(any("stale or tampered" in error for error in errors), errors)
 
     def test_installed_project_ignores_unrelated_files_and_allows_project_specific_skill(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -345,6 +509,21 @@ class ValidateKitTests(unittest.TestCase):
         )
 
         self.assertNotIn("experiment_summary", instance["results"])
+        self.assertEqual([], validate_kit.schema_errors(instance, schema))
+
+    def test_run_schema_accepts_historical_working_tree_description(self) -> None:
+        schema = json.loads(
+            (ROOT / ".agent-system" / "schemas" / "run.schema.json").read_text(encoding="utf-8")
+        )
+        instance = json.loads(
+            (ROOT / ".agent-system" / "templates" / "run.template.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        instance["provenance"]["repository"]["working_tree"] = (
+            "Record the inspected state when available."
+        )
+
         self.assertEqual([], validate_kit.schema_errors(instance, schema))
 
     def test_learning_schema_accepts_sparse_and_scoped_signals(self) -> None:
@@ -770,7 +949,6 @@ class ValidateKitTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / "target"
             self.build_overlay(target)
-            subprocess.run(["git", "init", "-q", str(target)], check=True, timeout=60)
             result = subprocess.run(
                 [
                     sys.executable,
@@ -955,7 +1133,7 @@ class ValidateKitTests(unittest.TestCase):
             shutil.copyfile(ROOT / "VERSION", root / "VERSION")
             path = root / ".agents" / "skills" / "execute-dsml-task" / "SKILL.md"
             text = path.read_text(encoding="utf-8").replace(
-                'version: "0.8.0"', 'version: "0.1.0"', 1
+                'version: "0.9.0"', 'version: "0.1.0"', 1
             )
             path.write_text(text, encoding="utf-8")
 
@@ -1076,7 +1254,11 @@ class ValidateKitTests(unittest.TestCase):
         self.assertIn("without writing", recurring)
         recurring_files = fixtures["recurring-regression-workflow"]["repository"]["files"]
         self.assertTrue(recurring_files)
-        self.assertTrue(all(path.endswith("/learning.yaml") for path in recurring_files))
+        self.assertIn(".agent-system/local/request-patterns.yaml", recurring_files)
+        self.assertEqual(
+            3,
+            sum(path.endswith("/learning.yaml") for path in recurring_files),
+        )
         self.assertIn("primary", auxiliary)
         self.assertIn("downgrade", auxiliary)
 
@@ -1103,6 +1285,11 @@ class ValidateKitTests(unittest.TestCase):
         self.assertIn(".agent-system/SYSTEM.md", runtime)
         self.assertIn(".agent-system/workflows/", runtime)
         self.assertIn("every other request as normal agent work", runtime)
+        self.assertIn("substantial work that depends on repository contents", runtime)
+        self.assertIn("git_preflight.py", runtime)
+        self.assertIn("--sync-mode", runtime)
+        self.assertIn("Do not ask whether to use Git", runtime)
+        self.assertIn("authentication", runtime)
         self.assertIn("Markdown and PDF are output formats", analysis_skill)
         self.assertIn("explicit audit request selects `deep-audit`", analysis_skill)
 
@@ -1720,10 +1907,10 @@ class ValidateKitTests(unittest.TestCase):
             shutil.copytree(ROOT / ".agents", root / ".agents")
             path = root / ".agents" / "skills" / "analyze-dsml-project" / "SKILL.md"
             text = path.read_text(encoding="utf-8").replace(
-                'metadata:\n  author: "ghgin, Hermes Agent"\n  version: "0.8.0"',
+                'metadata:\n  author: "ghgin, Hermes Agent"\n  version: "0.9.0"',
                 "metadata: definitely-not-a-mapping",
             )
-            text += '\n  author: "ghgin, Hermes Agent"\n  version: "0.8.0"\n'
+            text += '\n  author: "ghgin, Hermes Agent"\n  version: "0.9.0"\n'
             path.write_text(text, encoding="utf-8")
             errors = validate_kit.validate_skills(root)
         self.assertTrue(any("metadata must be a frontmatter mapping" in error for error in errors))

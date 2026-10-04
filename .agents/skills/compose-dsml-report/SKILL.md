@@ -4,7 +4,7 @@ description: Compose stable DS/ML technical reports from normalized analysis sta
 license: MIT
 metadata:
   author: "ghgin, Hermes Agent"
-  version: "0.8.0"
+  version: "0.9.0"
 ---
 
 # Compose DS/ML Report

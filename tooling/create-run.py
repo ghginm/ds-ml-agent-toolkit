@@ -7,12 +7,17 @@ import argparse
 import json
 import re
 import shutil
-import subprocess
+import sys
 from datetime import date
 from pathlib import Path
 from typing import Any
 
 SCRIPT_PATH = Path(__file__).resolve()
+TOOLING_DIR = SCRIPT_PATH.parent
+if str(TOOLING_DIR) not in sys.path:
+    sys.path.insert(0, str(TOOLING_DIR))
+import git_preflight
+
 TOOLKIT_ROOT = (
     SCRIPT_PATH.parents[2]
     if SCRIPT_PATH.parent.parent.name == ".agent-system"
@@ -53,28 +58,13 @@ def _toolkit_version() -> str:
 
 
 def resolve_project_root(value: Path) -> Path:
-    """Resolve and verify the explicit canonical repository root."""
+    """Resolve the explicit project root without requiring Git."""
     try:
         project_root = value.expanduser().resolve(strict=True)
     except OSError as exc:
         raise ValueError(f"project root cannot be resolved: {value}") from exc
     if not project_root.is_dir():
         raise ValueError(f"project root is not a directory: {project_root}")
-    try:
-        result = subprocess.run(
-            ["git", "-C", str(project_root), "rev-parse", "--show-toplevel"],
-            capture_output=True,
-            check=True,
-            text=True,
-            timeout=30,
-        )
-    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-        raise ValueError(f"project root is not a resolvable Git repository: {project_root}") from exc
-    git_root = Path(result.stdout.strip()).resolve(strict=True)
-    if git_root != project_root:
-        raise ValueError(
-            f"project root must be the repository root ({git_root}), got: {project_root}"
-        )
     agent_system = project_root / ".agent-system"
     if agent_system.is_symlink() or not agent_system.is_dir():
         raise ValueError(
@@ -101,6 +91,14 @@ def create_run(
 ) -> tuple[Path, Path]:
     """Create a new run directory and both records without overwriting."""
     project_root = resolve_project_root(project_root)
+    git_state = git_preflight.preflight(
+        project_root,
+        git_mode="required" if autoresearch else "auto-detect",
+    )
+    if autoresearch:
+        git_errors = git_preflight.git_requirement_errors(git_state, project_root)
+        if git_errors:
+            raise ValueError("; ".join(git_errors))
     if re.fullmatch(RUN_ID_PATTERN, run_id) is None:
         raise ValueError(
             "run ID must start with an alphanumeric and contain only letters, "
@@ -147,6 +145,12 @@ def create_run(
     run["task"]["id"] = run_id
     run["task"]["goal"] = goal
     run["task"]["acceptance"] = acceptance
+    if git_state["status"] == "repository":
+        run["provenance"]["repository"]["revision"] = git_state["head"]
+        run["provenance"]["repository"]["working_tree"] = git_state["worktree"]
+        run["provenance"]["repository"]["diff_ref"] = git_state["upstream"]
+    else:
+        run["provenance"]["repository"]["working_tree"] = "not_applicable"
     active_policy = project_root / ".agent-system" / "policy" / "capability-policy.yaml"
     if active_policy.is_file():
         run["policy"]["policy_ref"] = ".agent-system/policy/capability-policy.yaml"
@@ -273,7 +277,7 @@ def main() -> int:
         experiment_mode=args.experiment_mode,
         max_experiments=args.max_experiments,
     )
-    project_root = resolve_project_root(args.project_root)
+    project_root = args.project_root.expanduser().resolve(strict=True)
     print(f"Created {run_path.relative_to(project_root)}")
     print(f"Created {learning_path.relative_to(project_root)}")
     if args.autoresearch:

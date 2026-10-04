@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires local Git, terminal command execution, and a reproducible experiment evaluation command.
 metadata:
   author: "Luis Cantero (upstream), adapted by ghgin and Hermes Agent"
-  version: "0.8.0"
+  version: "0.9.0"
   inspired-by: "https://github.com/karpathy/autoresearch"
 ---
 
@@ -55,13 +55,13 @@ Ask the user to confirm or correct the complete preflight before establishing th
 
 Before the baseline:
 
-1. From the user's initial working directory, before creating or entering any isolated worktree, resolve `canonical_project_root` with `git rev-parse --show-toplevel` and record the starting revision. Retain that absolute root for the entire run; never recompute it from a later current working directory.
+1. From the user's initial working directory, before creating or entering any isolated worktree, run `.agent-system/tooling/git_preflight.py --project-root <root> --git-mode required`. Reuse its detected repository root, branch, starting revision, upstream, remotes, worktree state, and ahead/behind state. Retain the absolute `canonical_project_root` for the entire run; never recompute it from a later current working directory. If the project is not a Git repository, ask whether to initialize or use Git only now because this workflow requires it; ordinary toolkit work remains Git-optional.
 2. Inspect the working tree. A dirty active worktree does not block autoresearch when safe isolation is available. Never discard, reset, stash, clean, include, or commit pre-existing user changes.
 3. Treat `canonical_project_root`, the new `experiment_worktree_root`, and the `toolkit_root` from which tooling/templates are loaded as three separate paths. They are not interchangeable.
 4. Prefer a separate local Git worktree on a dedicated `autoresearch/<run-id>` branch rooted at the recorded revision. Keep the user's active worktree exactly untouched and exclude its uncommitted changes from every experiment.
 5. Confirm experiment edits and rollback are confined to `experiment_worktree_root`. Proceed there even when the active worktree is dirty; if safe isolation cannot be established, stop before experimentation.
 6. Candidate source edits, experiment commits, checkout, and destructive rollback belong only in the isolated worktree. Writing toolkit-owned evidence below the canonical root does not authorize source-code changes in the active worktree.
-7. Do not initialize Git unless repository-level mutation is already authorized.
+7. Do not initialize Git unless repository-level mutation is already authorized. The preflight is read-only by default. Use `--sync-mode fetch-check` only when remote reads are already authorized and authentication works through normal Git/SSH configuration; use `fast-forward-only` only for a clean behind-only branch when policy permits. Never pull blindly, and never auto-stash, reset, merge, or rebase a dirty or diverged branch.
 
 Task-authorized local branch/worktree creation, local experiment commits, checkout, and rollback inside the isolated workspace are local versioning operations. They do not authorize remote effects. Never push, create a remote branch or repository, open a pull request, or change remote configuration unless that exact remote action is separately authorized. A configured remote is not permission to use it.
 

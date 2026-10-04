@@ -31,9 +31,14 @@ bug fix, explanation, one-shot experiment, or vague request to improve a model.
    guardrails.
 2. Obtain confirmation unless the initial request already supplies a complete,
    safe contract and explicitly authorizes immediate execution.
-3. Before isolation, resolve and retain the initiating repository root as
-   `canonical_project_root`. Keep it distinct from `experiment_worktree_root` and
-   `toolkit_root`; never recompute it after changing directories.
+3. Before isolation, run `git_preflight.py --git-mode required` and retain its
+   initiating repository root, branch, revision, upstream, remotes, cleanliness,
+   and ahead/behind state as `canonical_project_root`. If Git is absent, ask about
+   initialization only because autoresearch requires it. Keep the root distinct
+   from `experiment_worktree_root` and `toolkit_root`; never recompute it after
+   changing directories. Remote checks reuse normal credentials; synchronization
+   is fetch/check or clean fast-forward-only, never blind pull, stash, reset,
+   merge, or rebase.
 4. Initialize evidence with `create-run.py --project-root
    <canonical_project_root> --autoresearch --experiment-mode <mode>`, retain the
    absolute canonical `run_dir`, then isolate user work, reproduce the baseline,

@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:dsml-agent-kit:request-event-schema:0.1",
+  "title": "Sanitized local request event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "timestamp",
+    "kind",
+    "topics",
+    "deliverable",
+    "route",
+    "run_ref",
+    "outcome",
+    "rework",
+    "routing_corrected",
+    "reason_tags"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "enum": ["0.1"]},
+    "event_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "kind": {"type": "string", "maxLength": 64, "pattern": "^[a-z0-9][a-z0-9_-]*$"},
+    "topics": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {"type": "string", "maxLength": 64, "pattern": "^[a-z0-9][a-z0-9_-]*$"}
+    },
+    "deliverable": {
+      "type": ["string", "null"],
+      "maxLength": 64,
+      "pattern": "^[a-z0-9][a-z0-9_-]*$"
+    },
+    "route": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,63}(/[a-z0-9][a-z0-9_-]{0,63})?$"
+    },
+    "run_ref": {
+      "type": ["string", "null"],
+      "pattern": "^\\.agent-system/runs/[A-Za-z0-9][A-Za-z0-9._-]*/run\\.yaml$"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": ["completed", "partial", "blocked", "failed", "unknown"]
+    },
+    "rework": {"type": "boolean"},
+    "routing_corrected": {"type": "boolean"},
+    "reason_tags": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {"type": "string", "maxLength": 64, "pattern": "^[a-z0-9][a-z0-9_-]*$"}
+    }
+  }
+}

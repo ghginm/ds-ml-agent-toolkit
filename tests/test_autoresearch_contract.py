@@ -849,6 +849,20 @@ class AutoresearchContractTests(unittest.TestCase):
         )
         self.assertEqual(0, build.returncode, build.stdout + build.stderr)
         subprocess.run(["git", "init", "-q", str(root)], check=True, timeout=60)
+        subprocess.run(
+            ["git", "-C", str(root), "config", "user.email", "synthetic@example.invalid"],
+            check=True,
+            timeout=60,
+        )
+        subprocess.run(
+            ["git", "-C", str(root), "config", "user.name", "Synthetic Test"],
+            check=True,
+            timeout=60,
+        )
+        subprocess.run(["git", "-C", str(root), "add", "-A"], check=True, timeout=60)
+        subprocess.run(
+            ["git", "-C", str(root), "commit", "-qm", "baseline"], check=True, timeout=60
+        )
 
     def create_run(
         self, root: Path, run_id: str, max_experiments: int = 10, experiment_mode: str = "adaptive"

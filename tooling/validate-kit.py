@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import importlib.util
 import json
 import re
 import subprocess
@@ -17,6 +18,14 @@ from urllib.parse import unquote
 
 SCRIPT_PATH = Path(__file__).resolve()
 ROOT = SCRIPT_PATH.parents[2] if SCRIPT_PATH.parent.parent.name == ".agent-system" else SCRIPT_PATH.parents[1]
+REQUEST_EVENTS_PATH = SCRIPT_PATH.parent / "request_events.py"
+REQUEST_EVENTS_SPEC = importlib.util.spec_from_file_location(
+    "dsml_request_events", REQUEST_EVENTS_PATH
+)
+if REQUEST_EVENTS_SPEC is None or REQUEST_EVENTS_SPEC.loader is None:
+    raise RuntimeError(f"cannot load request-event helper: {REQUEST_EVENTS_PATH}")
+request_events = importlib.util.module_from_spec(REQUEST_EVENTS_SPEC)
+REQUEST_EVENTS_SPEC.loader.exec_module(request_events)
 CORE_SKILLS = {
     "analyze-dsml-project",
     "execute-dsml-task",
@@ -2245,6 +2254,83 @@ def validate_learning_contract(root: Path) -> list[str]:
             errors.extend(learning_semantic_errors(instance, path, root))
     return errors
 
+
+def validate_request_event_contract(root: Path) -> list[str]:
+    """Validate optional ignored request telemetry and deterministic aggregates."""
+    errors: list[str] = []
+    event_schema_path = root / ".agent-system" / "schemas" / "request-event.schema.json"
+    patterns_schema_path = root / ".agent-system" / "schemas" / "request-patterns.schema.json"
+    try:
+        event_schema = load_json(event_schema_path, root)
+        patterns_schema = load_json(patterns_schema_path, root)
+    except (OSError, ValueError) as exc:
+        return [f"request-event schemas are unreadable: {exc}"]
+    for path, schema in (
+        (event_schema_path, event_schema),
+        (patterns_schema_path, patterns_schema),
+    ):
+        errors.extend(
+            f"{relative_name(path, root)}: {item}"
+            for item in schema_definition_errors(schema)
+        )
+    try:
+        events = request_events.load_events(root)
+    except (OSError, UnicodeError, ValueError) as exc:
+        return errors + [f".agent-system/local/request-events.jsonl: {exc}"]
+    for index, event in enumerate(events, 1):
+        errors.extend(
+            f".agent-system/local/request-events.jsonl line {index}: {item}"
+            for item in schema_errors(event, event_schema)
+        )
+        errors.extend(
+            f".agent-system/local/request-events.jsonl line {index}: {item}"
+            for item in _learning_artifact_forbidden_keys(event, "request event")
+        )
+    patterns_path = root / ".agent-system" / "local" / "request-patterns.yaml"
+    if not patterns_path.exists():
+        return errors
+    try:
+        patterns = load_json(patterns_path, root)
+    except (OSError, ValueError) as exc:
+        return errors + [
+            f".agent-system/local/request-patterns.yaml: invalid JSON-compatible YAML: {exc}"
+        ]
+    errors.extend(
+        f".agent-system/local/request-patterns.yaml: {item}"
+        for item in schema_errors(patterns, patterns_schema)
+    )
+    errors.extend(
+        f".agent-system/local/request-patterns.yaml: {item}"
+        for item in _learning_artifact_forbidden_keys(patterns, "request pattern")
+    )
+    if isinstance(patterns, dict) and isinstance(patterns.get("minimum_count"), int):
+        source_event_count = patterns.get("source_event_count")
+        if (
+            isinstance(source_event_count, int)
+            and not isinstance(source_event_count, bool)
+            and source_event_count > len(events)
+        ):
+            errors.append(
+                ".agent-system/local/request-patterns.yaml source_event_count "
+                "exceeds the request-event ledger length"
+            )
+        elif (
+            isinstance(source_event_count, int)
+            and not isinstance(source_event_count, bool)
+            and source_event_count >= 0
+        ):
+            expected = request_events.aggregate(
+                events[:source_event_count],
+                minimum_count=patterns["minimum_count"],
+            )
+            if patterns != expected:
+                errors.append(
+                    ".agent-system/local/request-patterns.yaml is stale or tampered; "
+                    "run review-requests.py --force"
+                )
+    return errors
+
+
 def _policy_path_for_ref(root: Path, policy_ref: Any) -> Path:
     if not nonblank(policy_ref):
         raise ValueError("policy_ref must be a non-blank repository-relative path")
@@ -2959,6 +3045,7 @@ def validate_installed_project(root: Path) -> list[str]:
         validate_run_contract,
         validate_evaluation_contract,
         validate_learning_contract,
+        validate_request_event_contract,
         validate_project_config,
         validate_adapters,
     )
@@ -3019,6 +3106,7 @@ def validate_repository(root: Path = ROOT) -> list[str]:
         validate_run_contract,
         validate_evaluation_contract,
         validate_learning_contract,
+        validate_request_event_contract,
         validate_project_config,
         validate_evals,
         validate_adapters,

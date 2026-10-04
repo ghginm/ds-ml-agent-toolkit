@@ -30,6 +30,7 @@ routing contract
 | `.agents/skills/` | Reusable implementation expertise | No |
 | capability policy | Authorized recurring actions | Only deliberately |
 | `runs/` | Evidence for tracked or controlled work | No |
+| `local/request-*.{jsonl,yaml}` | Ignored request frequency/friction signals | No |
 
 ## Responsibility boundaries
 
@@ -69,7 +70,11 @@ availability never grants authorization.
 Tracked or controlled work may create sibling `run.yaml` and `learning.yaml`
 records. Ordinary work does not require them. `run.yaml` holds execution evidence;
 `learning.yaml` holds sparse routing/outcome metadata and at most a few actionable
-signals. Autoresearch additionally uses `evaluation.yaml`, a content-addressed
+signals. Meaningful ordinary requests may append compact sanitized metadata to
+ignored `.agent-system/local/request-events.jsonl`; deterministic thresholded
+review writes `request-patterns.yaml`. Neither file stores full prompts, terminal
+output, secrets, raw project data, or hidden reasoning, and frequency alone never
+changes toolkit content. Autoresearch additionally uses `evaluation.yaml`, a content-addressed
 experiment journal, and a project-local cross-run exposure ledger; transactional
 finalization separates research decisions from evidence, independent validation,
 branch, and production-integration state. The toolkit core is project-agnostic:
@@ -78,6 +83,14 @@ semantics such as direction, guardrail limits, and evaluation strategy enter onl
 through the explicit reconstructed contract. See
 [`docs/LEARNING_LOOP.md`](docs/LEARNING_LOOP.md) for the detailed
 maintenance lifecycle.
+
+Git is optional except for workflows such as autoresearch that explicitly require
+isolated versioned mutation. Before substantial repository-dependent work, agents
+use `git_preflight.py` for a best-effort freshness check while non-Git projects
+continue normally. A clean behind branch may be fast-forwarded only when policy
+permits; dirty or diverged worktrees are never stashed, reset, merged, or rebased
+automatically. Authentication diagnostics reuse configured Git/SSH behavior and
+inspect only remote configuration and public ssh-agent fingerprints after failure.
 
 For autoresearch, keep three roots explicit: `canonical_project_root` is the user's
 initiating repository/worktree and owns durable evidence;

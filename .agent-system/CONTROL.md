@@ -28,6 +28,14 @@ Health check:
 python3 -B .agent-system/tooling/validate-kit.py --installed-project .
 ```
 
+Optional maintenance tools:
+```text
+python3 -B .agent-system/tooling/git_preflight.py --project-root .
+python3 -B .agent-system/tooling/review-requests.py --project-root . --force
+```
+Git inspection is read-only by default. Request metadata is sanitized and stored
+under ignored `.agent-system/local/`; normal prompting and setup do not change.
+
 If validation reports missing or inconsistent toolkit-owned runtime files, repair
 from a trusted clean overlay with the same toolkit version. Project-owned files are
 not overwritten:

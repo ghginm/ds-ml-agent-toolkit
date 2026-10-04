@@ -368,12 +368,13 @@
         "files": {
           ".agent-system/runs/20000101-recall-drop/learning.yaml": "{\"schema_version\":\"0.2\",\"timestamp\":\"2000-01-01\",\"toolkit_version\":\"0.3.1\",\"run_ref\":\".agent-system/runs/20000101-recall-drop/run.yaml\",\"request\":{\"kind\":\"diagnosis\",\"topics\":[\"metric-regression\",\"feature-pipeline\"],\"deliverable\":null},\"routing\":{\"skill\":\"execute-dsml-task\",\"mode\":\"diagnose\",\"initial_skill\":null,\"initial_mode\":null,\"corrected\":false},\"signals\":[]}",
           ".agent-system/runs/20000102-feature-change/learning.yaml": "{\"schema_version\":\"0.2\",\"timestamp\":\"2000-01-02\",\"toolkit_version\":\"0.3.1\",\"run_ref\":\".agent-system/runs/20000102-feature-change/run.yaml\",\"request\":{\"kind\":\"diagnosis\",\"topics\":[\"metric-regression\",\"feature-pipeline\"],\"deliverable\":null},\"routing\":{\"skill\":\"execute-dsml-task\",\"mode\":\"diagnose\",\"initial_skill\":null,\"initial_mode\":null,\"corrected\":false},\"signals\":[]}",
-          ".agent-system/runs/20000103-segment-drop/learning.yaml": "{\"schema_version\":\"0.2\",\"timestamp\":\"2000-01-03\",\"toolkit_version\":\"0.3.1\",\"run_ref\":\".agent-system/runs/20000103-segment-drop/run.yaml\",\"request\":{\"kind\":\"diagnosis\",\"topics\":[\"metric-regression\",\"feature-pipeline\"],\"deliverable\":null},\"routing\":{\"skill\":\"execute-dsml-task\",\"mode\":\"diagnose\",\"initial_skill\":null,\"initial_mode\":null,\"corrected\":false},\"signals\":[]}"
+          ".agent-system/runs/20000103-segment-drop/learning.yaml": "{\"schema_version\":\"0.2\",\"timestamp\":\"2000-01-03\",\"toolkit_version\":\"0.3.1\",\"run_ref\":\".agent-system/runs/20000103-segment-drop/run.yaml\",\"request\":{\"kind\":\"diagnosis\",\"topics\":[\"metric-regression\",\"feature-pipeline\"],\"deliverable\":null},\"routing\":{\"skill\":\"execute-dsml-task\",\"mode\":\"diagnose\",\"initial_skill\":null,\"initial_mode\":null,\"corrected\":false},\"signals\":[]}",
+          ".agent-system/local/request-patterns.yaml": "{\"schema_version\":\"0.1\",\"source_event_count\":3,\"reviewed_through\":\"2000-01-03T12:00:00Z\",\"minimum_count\":3,\"patterns\":[{\"id\":\"request-a1b2c3d4e5f6\",\"kind\":\"diagnosis\",\"topics\":[\"feature_pipeline\",\"metric_regression\"],\"deliverable\":null,\"route\":\"execute-dsml-task/diagnose\",\"count\":3,\"first_seen\":\"2000-01-01T12:00:00Z\",\"last_seen\":\"2000-01-03T12:00:00Z\",\"trend\":\"stable\",\"friction\":{\"rework_rate\":0,\"routing_corrections\":0,\"failures\":0,\"reason_tags\":{}},\"recommendation\":{\"type\":\"monitor\",\"target\":null}}]}"
         }
       },
       "raw_evidence": [
-        "Three learning records share the same diagnosis and feature-pipeline request metadata.",
-        "No toolkit failure occurred, signals are empty, and recurrence is inferred only from aggregation across the three sanitized records."
+        "The deterministic local pattern summarizes three matching diagnosis and feature-pipeline request events.",
+        "No toolkit failure or rework occurred; learning signals are empty, so frequency alone remains a monitoring signal."
       ]
     },
     {
