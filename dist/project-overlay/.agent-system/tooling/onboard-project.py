@@ -17,6 +17,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+TOOLING_DIR = Path(__file__).resolve().parent
+if str(TOOLING_DIR) not in sys.path:
+    sys.path.insert(0, str(TOOLING_DIR))
+import git_preflight
+
 CORE_SKILLS = {
     "analyze-dsml-project",
     "execute-dsml-task",
@@ -891,17 +896,11 @@ def shlex_join_safe(command: list[str]) -> str:
 
 def _repository_revision(root: Path) -> str:
     try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            cwd=root,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=5,
-        )
-    except (OSError, subprocess.TimeoutExpired):
+        state = git_preflight.preflight(root)
+    except (OSError, ValueError, subprocess.TimeoutExpired):
         return "unavailable"
-    return result.stdout.strip() if result.returncode == 0 and result.stdout.strip() else "unavailable"
+    head = state.get("head")
+    return head[:12] if isinstance(head, str) and head else "unavailable"
 
 
 def _additional_skills(root: Path) -> list[str]:

@@ -4,7 +4,7 @@ description: Inspect an existing DS/ML/AML project for onboarding, data-to-decis
 license: MIT
 metadata:
   author: "ghgin, Hermes Agent"
-  version: "0.8.0"
+  version: "0.9.0"
 ---
 
 # Analyze DS/ML Project
@@ -58,7 +58,7 @@ If the helper is unavailable, perform the same steps directly from the shipped t
 
 ## Learning-signal review
 
-For “Review this project's DS/ML Agent Kit learning signals,” use orientation mode. Read `.agent-system/runs/*/learning.yaml` as the primary input. Use request metadata to identify repeated needs, cluster concise signals, and open a referenced `run.yaml` only when a signal needs drill-down evidence or context. Report only important themes; do not produce a broad project analytics report.
+For “Review this project's DS/ML Agent Kit learning signals,” use orientation mode. Read `.agent-system/local/request-patterns.yaml` first for deterministic frequency, recency, routing-correction, failure, and rework signals. Semantically group only closely related patterns during the review. Then read `.agent-system/runs/*/learning.yaml` for evidence-backed conclusions and open a referenced `run.yaml` only when a signal needs drill-down evidence or context. Inspect raw request events only to validate or debug aggregation. Report only important themes; do not produce a broad project analytics report.
 
 Do not infer recurrence from a single record or copy detailed project metrics into the review. Recommend the narrowest responsible layer: project-local instructions or map/config for project facts and workflows; an existing skill reference for detailed reusable procedures; `SKILL.md` only for routing/core invariants; shared instructions for universal behavior; an adapter, capability policy, or tooling layer when it owns the issue; a new skill only for a genuinely distinct workflow. Never apply maintenance changes to released toolkit content automatically.
 

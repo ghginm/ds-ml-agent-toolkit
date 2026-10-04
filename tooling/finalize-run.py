@@ -9,13 +9,16 @@ import importlib.util
 import json
 import os
 import secrets
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any
 
 SCRIPT_PATH = Path(__file__).resolve()
 TOOLING_DIR = SCRIPT_PATH.parent
+if str(TOOLING_DIR) not in sys.path:
+    sys.path.insert(0, str(TOOLING_DIR))
+import git_preflight
+
 VALIDATOR_PATH = TOOLING_DIR / "validate-kit.py"
 SPEC = importlib.util.spec_from_file_location("dsml_validate_kit", VALIDATOR_PATH)
 if SPEC is None or SPEC.loader is None:
@@ -42,20 +45,10 @@ def _atomic_write(path: Path, content: str) -> None:
 
 def _git_errors(root: Path) -> list[str]:
     try:
-        result = subprocess.run(
-            ["git", "-C", str(root), "rev-parse", "--show-toplevel"],
-            capture_output=True,
-            check=False,
-            text=True,
-            timeout=30,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
+        state = git_preflight.preflight(root, git_mode="required")
+    except (OSError, ValueError) as exc:
         return [f"cannot inspect Git repository state: {exc}"]
-    if result.returncode != 0:
-        return ["project root is not a Git repository"]
-    if Path(result.stdout.strip()).resolve() != root.resolve():
-        return ["--project-root must identify the canonical Git repository root"]
-    return []
+    return git_preflight.git_requirement_errors(state, root)
 
 
 def _final_split_identity(evaluation: dict[str, Any]) -> dict[str, Any]:

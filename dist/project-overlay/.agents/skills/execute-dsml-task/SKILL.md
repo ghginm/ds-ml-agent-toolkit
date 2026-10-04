@@ -4,7 +4,7 @@ description: Diagnose, implement, or evaluate DS/ML/AML changes for concrete reg
 license: MIT
 metadata:
   author: "ghgin, Hermes Agent"
-  version: "0.8.0"
+  version: "0.9.0"
 ---
 
 # Execute DS/ML Task

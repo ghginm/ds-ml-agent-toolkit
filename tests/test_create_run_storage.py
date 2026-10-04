@@ -36,15 +36,20 @@ class CreateRunStorageTests(unittest.TestCase):
         self._git(root, "commit", "-qm", "synthetic baseline")
         return root
 
-    def _create(self, project_root: Path, cwd: Path, run_id: str) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            [
+    def _create(
+        self,
+        project_root: Path,
+        cwd: Path,
+        run_id: str,
+        *,
+        autoresearch: bool = True,
+    ) -> subprocess.CompletedProcess[str]:
+        command = [
                 sys.executable,
                 "-B",
                 str(CREATE_RUN),
                 "--project-root",
                 str(project_root),
-                "--autoresearch",
                 "--id",
                 run_id,
                 "--goal",
@@ -56,8 +61,12 @@ class CreateRunStorageTests(unittest.TestCase):
                 "--skill",
                 "autoresearch",
                 "--mode",
-                "autoresearch",
-            ],
+                "autoresearch" if autoresearch else "develop",
+            ]
+        if autoresearch:
+            command.insert(5, "--autoresearch")
+        return subprocess.run(
+            command,
             cwd=cwd,
             capture_output=True,
             text=True,
@@ -86,6 +95,39 @@ class CreateRunStorageTests(unittest.TestCase):
             result = self._create(project, project, "clean-run")
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
             self._assert_authoritative_evidence(project, "clean-run")
+
+    def test_autoresearch_reports_git_requirement_only_when_selected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            (project / ".agent-system").mkdir(parents=True)
+
+            result = self._create(project, project, "requires-git")
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("workflow requires Git", result.stderr)
+
+    def test_non_git_tracked_run_records_not_applicable_working_tree(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            (project / ".agent-system").mkdir(parents=True)
+
+            result = self._create(
+                project,
+                project,
+                "non-git-run",
+                autoresearch=False,
+            )
+            run = json.loads(
+                (project / ".agent-system" / "runs" / "non-git-run" / "run.yaml").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        repository = run["provenance"]["repository"]
+        self.assertIsNone(repository["revision"])
+        self.assertIsNone(repository["diff_ref"])
+        self.assertEqual("not_applicable", repository["working_tree"])
 
     def test_dirty_active_worktree_keeps_candidate_mutations_isolated(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
