@@ -1,0 +1,33 @@
+{
+  "schema_version": "0.4",
+  "timestamp": "2026-10-06",
+  "toolkit_version": "0.10.0",
+  "run_ref": ".agent-system/runs/2026-10-06_214711-git-finalization-conventions/run.yaml",
+  "request": {
+    "kind": "feature",
+    "topics": [
+      "git-finalization",
+      "conventional-commits",
+      "repository-hygiene"
+    ],
+    "deliverable": "toolkit-policy"
+  },
+  "routing": {
+    "skill": "execute-dsml-task",
+    "mode": "develop",
+    "initial_skill": null,
+    "initial_mode": null,
+    "corrected": false
+  },
+  "outcome": {
+    "execution": "completed",
+    "user_outcome": "unknown",
+    "reason_tags": [
+      "policy-added",
+      "behavioral-coverage-added",
+      "release-metadata-synchronized"
+    ]
+  },
+  "signals": [],
+  "no_reusable_signal_reason": "The requested reusable behavior was implemented directly; no additional recurring project or toolkit weakness was observed beyond the delivered feature."
+}

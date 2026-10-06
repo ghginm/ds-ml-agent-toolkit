@@ -48,7 +48,7 @@ class OnboardingTests(unittest.TestCase):
             )
             agents_text = (
                 "# Existing project instructions\n\nPreserve this synthetic project rule.\n\n"
-                + (target / "AGENTS.dsml.template.md").read_text(encoding="utf-8")
+                + (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").read_text(encoding="utf-8")
             )
             (target / "AGENTS.md").write_text(agents_text, encoding="utf-8")
             extra_skill = target / ".agents" / "skills" / "entity-resolution" / "SKILL.md"
@@ -193,7 +193,7 @@ class OnboardingTests(unittest.TestCase):
             status = (target / ".agent-system" / "onboarding-status.md").read_text(
                 encoding="utf-8"
             )
-            self.assertIn("Merge `AGENTS.dsml.template.md`", status)
+            self.assertIn("Merge `.agent-system/templates/AGENTS.dsml.template.md`", status)
             self.assertIn("The existing file was preserved unchanged.", status)
             self.assertIn("Validation: PASS", status)
             self.assertNotIn("private-cluster-alias", status)
@@ -282,7 +282,7 @@ class OnboardingTests(unittest.TestCase):
                 encoding="utf-8",
             )
             (target / "AGENTS.md").write_text(
-                (target / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
+                (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
                 encoding="utf-8",
             )
 
@@ -344,7 +344,7 @@ class OnboardingTests(unittest.TestCase):
             agents.write_text(
                 agents.read_text(encoding="utf-8")
                 + "\n"
-                + (target / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
+                + (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
                 encoding="utf-8",
             )
 
@@ -421,6 +421,7 @@ class OnboardingTests(unittest.TestCase):
             ROOT / ".agent-system" / "templates" / "AGENTS.dsml.template.md"
         ).read_text(encoding="utf-8")
         control = (ROOT / ".agent-system" / "CONTROL.md").read_text(encoding="utf-8")
+        guide = (ROOT / "DSML_AGENT_KIT.md").read_text(encoding="utf-8")
 
         for text in (skill, orientation):
             self.assertIn("Set up the DS/ML Agent Kit", text)
@@ -431,10 +432,15 @@ class OnboardingTests(unittest.TestCase):
             ".agent-system/workflows/",
         ):
             self.assertIn(path, instructions)
-        self.assertIn("## Setup in three steps", control)
-        self.assertIn("READY_WITH_WARNINGS", control)
-        self.assertIn(".agent-system/tooling/validate-kit.py --installed-project .", control)
+        self.assertNotIn("## Repair and upgrade", control)
+        self.assertNotIn("--repair-runtime", control)
+        self.assertNotIn("--upgrade-from", control)
+        self.assertNotIn(".agent-system/tooling/validate-kit.py --installed-project .", control)
         self.assertIn("Need more detail? See [`SYSTEM.md`](SYSTEM.md).", control)
+        self.assertIn("## Quick setup", guide)
+        self.assertIn("Set up the DS/ML Agent Kit for this project.", guide)
+        self.assertIn("Most users do not need to edit files inside `.agent-system`.", guide)
+        self.assertNotIn("## Routing precedence", guide)
         self.assertFalse((ROOT / ".agent-system" / "docs" / "DSML_AGENT_KIT.md").exists())
         self.assertFalse((ROOT / ".agent-system" / "docs" / "HOW_TO_USE_DSML_AGENT.md").exists())
 
@@ -568,7 +574,7 @@ class OnboardingTests(unittest.TestCase):
                         '[project]\nname = "safe-write-test"\n', encoding="utf-8"
                     )
                     (target / "AGENTS.md").write_text(
-                        (target / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
+                        (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
                         encoding="utf-8",
                     )
                     victim = base / scenario / "victim.txt"
@@ -692,7 +698,7 @@ class OnboardingTests(unittest.TestCase):
             base = Path(directory)
             target = base / "symlinked-instruction-source"
             self.build_overlay(target)
-            source = target / "adapters" / "copilot" / "copilot-instructions.fragment.md"
+            source = target / ".agent-system" / "adapters" / "copilot" / "copilot-instructions.fragment.md"
             external = base / "external-instructions.md"
             external.write_text("Synthetic external instructions.\n", encoding="utf-8")
             source.unlink()
@@ -707,7 +713,7 @@ class OnboardingTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / "missing-instruction-source"
             self.build_overlay(target)
-            (target / "AGENTS.dsml.template.md").unlink()
+            (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").unlink()
 
             result = subprocess.run(
                 [
@@ -743,7 +749,7 @@ class OnboardingTests(unittest.TestCase):
             )
             (target / "tests").mkdir()
             (target / "AGENTS.md").write_text(
-                (target / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
+                (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
                 encoding="utf-8",
             )
             project_path = target / ".agent-system" / "project.yaml"
@@ -779,7 +785,7 @@ class OnboardingTests(unittest.TestCase):
                 encoding="utf-8",
             )
             (target / "AGENTS.md").write_text(
-                (target / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
+                (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
                 encoding="utf-8",
             )
             project_path = target / ".agent-system" / "project.yaml"
@@ -809,7 +815,7 @@ class OnboardingTests(unittest.TestCase):
             target = Path(directory) / "recheck-idempotent"
             self.build_overlay(target)
             (target / "AGENTS.md").write_text(
-                (target / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
+                (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
                 encoding="utf-8",
             )
             onboard_project.onboard_repository(
@@ -841,7 +847,7 @@ class OnboardingTests(unittest.TestCase):
                 '[project]\nname = "mapped-project"\n', encoding="utf-8"
             )
             (target / "AGENTS.md").write_text(
-                (target / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
+                (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
                 encoding="utf-8",
             )
             architecture = target / "docs" / "system-architecture.md"
@@ -875,7 +881,7 @@ class OnboardingTests(unittest.TestCase):
                     else:
                         instruction_path = target / ".github" / "copilot-instructions.md"
                         instruction_path.parent.mkdir()
-                        original = (target / "AGENTS.dsml.template.md").read_text(
+                        original = (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").read_text(
                             encoding="utf-8"
                         )
                     instruction_path.write_text(original, encoding="utf-8")
@@ -898,7 +904,7 @@ class OnboardingTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / "fenced-instructions"
             self.build_overlay(target)
-            template = (target / "AGENTS.dsml.template.md").read_text(encoding="utf-8")
+            template = (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").read_text(encoding="utf-8")
             agents = target / "AGENTS.md"
             original = "# Existing instructions\n\n```markdown\n" + template + "\n```\n"
             agents.write_text(original, encoding="utf-8")
@@ -928,7 +934,7 @@ class OnboardingTests(unittest.TestCase):
                         encoding="utf-8",
                     )
                     (target / "AGENTS.md").write_text(
-                        (target / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
+                        (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
                         encoding="utf-8",
                     )
                     template = target / ".agent-system" / "policy" / "capability-policy.template.yaml"
@@ -983,7 +989,7 @@ class OnboardingTests(unittest.TestCase):
             target = Path(directory) / "invalid-active-policy"
             self.build_overlay(target)
             (target / "AGENTS.md").write_text(
-                (target / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
+                (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
                 encoding="utf-8",
             )
             policy_dir = target / ".agent-system" / "policy"
@@ -1019,7 +1025,7 @@ class OnboardingTests(unittest.TestCase):
             target = Path(directory) / "unsafe-active-policy"
             self.build_overlay(target)
             (target / "AGENTS.md").write_text(
-                (target / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
+                (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
                 encoding="utf-8",
             )
             policy_dir = target / ".agent-system" / "policy"
@@ -1078,7 +1084,7 @@ class OnboardingTests(unittest.TestCase):
             )
             (target / "tests").mkdir()
             (target / "AGENTS.md").write_text(
-                (target / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
+                (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
                 encoding="utf-8",
             )
             onboard_project.onboard_repository(
@@ -1104,7 +1110,7 @@ class OnboardingTests(unittest.TestCase):
             self.build_overlay(target)
             (target / "MLmodel").write_text("flavor: python_function\n", encoding="utf-8")
             (target / "AGENTS.md").write_text(
-                (target / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
+                (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
                 encoding="utf-8",
             )
             onboard_project.onboard_repository(
@@ -1167,7 +1173,7 @@ class OnboardingTests(unittest.TestCase):
                 encoding="utf-8",
             )
             (target / "AGENTS.md").write_text(
-                (target / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
+                (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
                 encoding="utf-8",
             )
 
@@ -1198,7 +1204,7 @@ class OnboardingTests(unittest.TestCase):
                 '[project]\nname = "path-conflict"\n', encoding="utf-8"
             )
             (target / "AGENTS.md").write_text(
-                (target / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
+                (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
                 encoding="utf-8",
             )
             (target / "src" / "training").mkdir(parents=True)
@@ -1259,7 +1265,7 @@ class OnboardingTests(unittest.TestCase):
                 encoding="utf-8",
             )
             (target / "AGENTS.md").write_text(
-                (target / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
+                (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
                 encoding="utf-8",
             )
             project_path = target / ".agent-system" / "project.yaml"
@@ -1323,7 +1329,7 @@ class OnboardingTests(unittest.TestCase):
             target = Path(directory) / "broken-template-project"
             self.build_overlay(target)
             (target / "AGENTS.md").write_text(
-                (target / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
+                (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
                 encoding="utf-8",
             )
             template = target / ".agent-system" / "policy" / "capability-policy.template.yaml"
@@ -1356,7 +1362,7 @@ class OnboardingTests(unittest.TestCase):
             target = Path(directory) / "broken-active-policy-project"
             self.build_overlay(target)
             (target / "AGENTS.md").write_text(
-                (target / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
+                (target / ".agent-system" / "templates" / "AGENTS.dsml.template.md").read_text(encoding="utf-8"),
                 encoding="utf-8",
             )
             policy_dir = target / ".agent-system" / "policy"

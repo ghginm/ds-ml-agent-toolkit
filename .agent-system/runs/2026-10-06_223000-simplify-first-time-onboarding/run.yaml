@@ -1,0 +1,208 @@
+{
+  "schema_version": "0.1",
+  "task": {
+    "id": "2026-10-06_223000-simplify-first-time-onboarding",
+    "mode": "tracked",
+    "goal": "Make DSML_AGENT_KIT.md the canonical concise human entry point in the distributed overlay and hide implementation-oriented setup files from the overlay root.",
+    "scope": [
+      "Canonical root user guide and deterministic overlay layout.",
+      "Onboarding instruction-template and adapter path consumers.",
+      "Manifest, validator, tests, version metadata, and generated overlay."
+    ],
+    "non_goals": [
+      "Duplicate CONTROL.md or SYSTEM.md into the user guide.",
+      "Change normal DS/ML workflow semantics or skill loading behavior."
+    ],
+    "constraints": [
+      "Preserve unrelated dirty work already present in the repository.",
+      "Keep the user guide concise and keep implementation files under hidden toolkit directories."
+    ],
+    "budget": {},
+    "evaluation_plan": [
+      "Prove the new distribution layout with a failing test before implementation.",
+      "Rebuild and validate source and overlay manifests.",
+      "Run the complete unit suite and a fresh-project onboarding simulation."
+    ],
+    "acceptance": [
+      "A fresh copied overlay has one obvious root guide; its instructions initialize the kit successfully; AGENTS template generation and merge, manifest validation, adapters, and skill loading continue to work; source, overlay, and unit validation pass."
+    ],
+    "expected_outputs": [
+      "DSML_AGENT_KIT.md",
+      "A generated overlay whose only visible root entry is DSML_AGENT_KIT.md",
+      "Passing source, overlay, unit, and fresh-project setup checks"
+    ]
+  },
+  "policy": {
+    "policy_ref": ".agent-system/policy/capability-policy.yaml",
+    "data_classification": "unknown",
+    "allowed_actions": [
+      "Read and search the authorized repository.",
+      "Edit task-scoped toolkit source, tests, run evidence, and generated distribution files.",
+      "Run deterministic local builds, validation, unit tests, and bounded fresh-project simulations."
+    ],
+    "approval_gates": [],
+    "authorization_boundary": []
+  },
+  "provenance": {
+    "repository": {
+      "revision": "801e5656d975f38e809028e26397c7076f5f3370",
+      "working_tree": "dirty",
+      "diff_ref": "origin/feat/liberal-rework-logging-policy"
+    },
+    "project_map_version": null,
+    "environment": {},
+    "inputs": [],
+    "versions": {
+      "toolkit_before": "0.10.0",
+      "toolkit_after": "0.11.0"
+    },
+    "seeds": []
+  },
+  "execution": {
+    "tools": [
+      "read_file",
+      "search_files",
+      "patch",
+      "write_file",
+      "terminal"
+    ],
+    "commands": [
+      {
+        "id": "overlay-baseline",
+        "command": "python3 -B tooling/build-overlay.py --check",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:overlay-baseline",
+        "sanitized_summary": "Confirmed the checked-in overlay was current before task edits."
+      },
+      {
+        "id": "tdd-red-layout",
+        "command": "python3 -B -m unittest tests.test_validate_kit.ValidateKitTests.test_overlay_build_is_deterministic_and_excludes_development_artifacts -v",
+        "capability": "safe_local_validation",
+        "status": "failed",
+        "exit_code": 1,
+        "evidence_ref": "terminal:tdd-red-layout",
+        "sanitized_summary": "The new layout test failed because DSML_AGENT_KIT.md was absent from the overlay."
+      },
+      {
+        "id": "build-overlay",
+        "command": "python3 -B tooling/build-overlay.py",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:build-overlay",
+        "sanitized_summary": "Rebuilt the deterministic overlay and generated manifest for version 0.11.0."
+      },
+      {
+        "id": "source-validation",
+        "command": "python3 -B tooling/validate-kit.py --source",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:source-validation",
+        "sanitized_summary": "Source toolkit validation passed."
+      },
+      {
+        "id": "overlay-validation",
+        "command": "python3 -B tooling/validate-kit.py --overlay dist/project-overlay",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:overlay-validation",
+        "sanitized_summary": "Generated overlay validation passed."
+      },
+      {
+        "id": "full-unit-suite",
+        "command": "python3 -B -m unittest discover -s tests -v",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:full-unit-suite",
+        "sanitized_summary": "All 281 unit and synthetic integration tests passed."
+      },
+      {
+        "id": "fresh-project-simulation",
+        "command": "fresh Git project + copy overlay + onboard-project.py --harness hermes --activation-verified + installed-project validation",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:fresh-project-simulation",
+        "sanitized_summary": "The only toolkit-owned visible root entry was DSML_AGENT_KIT.md; Hermes onboarding returned READY, generated project-owned setup artifacts, and installed-project validation passed."
+      }
+    ],
+    "changed_files": [
+      "DSML_AGENT_KIT.md",
+      "README.md",
+      "VERSION",
+      "tooling/build-overlay.py",
+      "tooling/onboard-project.py",
+      "tooling/validate-kit.py",
+      "tests/test_onboarding.py",
+      "tests/test_validate_kit.py",
+      "adapters/hermes/hermes-project.fragment.md",
+      ".agent-system/templates/AGENTS.dsml.template.md",
+      ".agent-system/templates/learning.template.yaml",
+      ".agents/skills/analyze-dsml-project/SKILL.md",
+      ".agents/skills/autoresearch/SKILL.md",
+      ".agents/skills/compose-dsml-report/SKILL.md",
+      ".agents/skills/execute-dsml-task/SKILL.md",
+      ".agents/skills/validate-dsml-result/SKILL.md",
+      "dist/project-overlay/",
+      ".agent-system/runs/2026-10-06_223000-simplify-first-time-onboarding/run.yaml",
+      ".agent-system/runs/2026-10-06_223000-simplify-first-time-onboarding/learning.yaml"
+    ]
+  },
+  "results": {
+    "status": "completed",
+    "tests": [
+      {
+        "name": "Source toolkit validation",
+        "status": "passed",
+        "command_ref": "source-validation"
+      },
+      {
+        "name": "Generated overlay validation",
+        "status": "passed",
+        "command_ref": "overlay-validation"
+      },
+      {
+        "name": "Full unit and synthetic integration suite",
+        "status": "passed",
+        "command_ref": "full-unit-suite"
+      },
+      {
+        "name": "Fresh-project onboarding simulation",
+        "status": "passed",
+        "command_ref": "fresh-project-simulation"
+      }
+    ],
+    "metrics": [],
+    "artifacts": [
+      {
+        "kind": "user_guide",
+        "ref": "DSML_AGENT_KIT.md",
+        "classification": "public"
+      },
+      {
+        "kind": "distribution",
+        "ref": "dist/project-overlay/",
+        "classification": "public"
+      }
+    ],
+    "decision": "not_applicable"
+  },
+  "knowledge": {
+    "verified_facts": [
+      "DSML_AGENT_KIT.md is concise, contains the required setup, usage, Git, and advanced sections, and does not duplicate the routing specification.",
+      "The generated overlay root contains .agent-system, .agents, and DSML_AGENT_KIT.md; DSML_AGENT_KIT.md is the only visible toolkit root entry.",
+      "The AGENTS template and adapters moved under .agent-system and all onboarding consumers and tests use the new paths.",
+      "Manifest and version metadata are synchronized at toolkit version 0.11.0.",
+      "A fresh Git project copied from the overlay onboarded successfully through the Hermes path and passed installed-project validation."
+    ],
+    "assumptions": [],
+    "remaining_uncertainty": [
+      "Hermes project-skill trust remains an operator-controlled prerequisite; the fresh simulation represented the activation-verified state."
+    ]
+  }
+}

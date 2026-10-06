@@ -1,0 +1,266 @@
+{
+  "schema_version": "0.1",
+  "task": {
+    "id": "2026-10-06_032410-kit-upgrade-worktree-finalization",
+    "mode": "tracked",
+    "goal": "Finish the audit follow-ups: define refactor worktree finalization in Structural Change Discipline, implement a real cross-version toolkit upgrade path with managed AGENTS.md sections, and clean the DSML_AGENT_KIT.md/CONTROL.md documentation split.",
+    "scope": [
+      "Structural Change Discipline shared guidance and the managed AGENTS template.",
+      "tooling/onboard-project.py runtime state machine: fresh/repair/upgrade/downgrade, managed instruction block, obsolete toolkit cleanup.",
+      "Documentation ownership: DSML_AGENT_KIT.md entry card, CONTROL.md usage-first reference, SYSTEM.md runtime states.",
+      "Validator content requirements, behavioral eval coverage, upgrade tests, 0.14.0 release metadata and rebuilt overlay."
+    ],
+    "non_goals": [
+      "Redesign the toolkit or add new subsystems.",
+      "Create a new workflow or tool purely for worktree lifecycle; extend Structural Change Discipline only.",
+      "Build a parallel ownership system beyond the existing manifest.",
+      "Commit or push without explicit authorization."
+    ],
+    "constraints": [
+      "Preserve simple UX: copy overlay -> read DSML_AGENT_KIT.md -> setup -> work normally.",
+      "Never overwrite project-owned files wholesale or delete unknown user content.",
+      "Use only synthetic, non-sensitive eval data.",
+      "Preserve unrelated existing working-tree changes."
+    ],
+    "budget": {
+      "compute": "Local stdlib validation and unit tests; no GPU.",
+      "time": "Single implementation session."
+    },
+    "evaluation_plan": [
+      "Unit tests A-K in tests/test_upgrade.py with stamped synthetic older overlays.",
+      "Source, overlay, drift, and installed-project validation.",
+      "Fresh-copy smoke test with stable recheck.",
+      "Real cross-version simulation from the committed older distribution (0.9.0 layout) to 0.14.0, including second-run idempotency and downgrade refusal."
+    ],
+    "acceptance": [
+      "Upgrade CLI distinguishes fresh/repair/upgrade/downgrade with deterministic tests A-K.",
+      "Managed toolkit block in AGENTS.md refreshes exactly once, migrates pre-managed sections when located exactly, and preserves user content otherwise.",
+      "Obsolete toolkit-owned files removed only under unambiguous manifest ownership; same-version repair semantics unchanged.",
+      "Validator, full unittest suite, fresh smoke, real cross-version upgrade simulation, idempotency, and downgrade refusal pass.",
+      "DSML_AGENT_KIT.md is a short entry card pointing Common usage to CONTROL.md; CONTROL.md is usage-first with no setup tutorial."
+    ],
+    "expected_outputs": [
+      "tests/test_upgrade.py",
+      "dist/project-overlay at version 0.14.0"
+    ]
+  },
+  "policy": {
+    "policy_ref": ".agent-system/policy/capability-policy.yaml",
+    "data_classification": "unknown",
+    "allowed_actions": [
+      "Read and search the authorized repository."
+    ],
+    "approval_gates": [],
+    "authorization_boundary": []
+  },
+  "provenance": {
+    "repository": {
+      "revision": "801e5656d975f38e809028e26397c7076f5f3370",
+      "working_tree": "dirty",
+      "diff_ref": "origin/feat/liberal-rework-logging-policy"
+    },
+    "project_map_version": null,
+    "environment": {},
+    "inputs": [],
+    "versions": {
+      "toolkit_before": "0.13.0",
+      "toolkit_after": "0.14.0"
+    },
+    "seeds": []
+  },
+  "execution": {
+    "tools": [
+      "git",
+      "python3",
+      "unittest"
+    ],
+    "commands": [
+      {
+        "id": "first-suite-run",
+        "command": "python3 -B -m unittest discover -s tests",
+        "capability": "safe_local_validation",
+        "status": "failed",
+        "exit_code": 1,
+        "evidence_ref": "terminal:first-suite-run",
+        "sanitized_summary": "Four failures: a stale CONTROL.md assertion expecting the removed setup heading, a guide assertion expecting the removed generic prompt list, and hygiene errors from bytecode caches created by a diagnostic run without -B."
+      },
+      {
+        "id": "cache-cleanup",
+        "command": "rm -rf tests/__pycache__ tooling/__pycache__",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:cache-cleanup",
+        "sanitized_summary": "Only the two generated cache directories created by this session's unflagged diagnostic run were removed; no tracked files touched."
+      },
+      {
+        "id": "upgrade-unit-tests",
+        "command": "python3 -B -m unittest tests.test_upgrade",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:upgrade-unit-tests",
+        "sanitized_summary": "All 9 cross-version install/repair/upgrade/downgrade tests pass, covering audit states A-K."
+      },
+      {
+        "id": "cross-version-simulation",
+        "command": "python3 -B scratch simulation: fresh-copy smoke, committed 0.9.0 overlay upgraded to 0.14.0, second-run idempotency, downgrade refusal",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:cross-version-simulation",
+        "sanitized_summary": "Scratch simulation against real distributions only: fresh setup READY with stable recheck; 0.9.0->0.14.0 upgrade removed five obsolete root-layout toolkit files (renamed into .agent-system), converted the contiguous pre-managed AGENTS section into exactly one managed block, preserved custom rules, the hand-maintained map, and a project skill; installed validation passed; the second run repaired zero files; an older distribution was refused."
+      },
+      {
+        "id": "final-full-suite",
+        "command": "python3 -B -m unittest discover -s tests",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:final-full-suite",
+        "sanitized_summary": "All 291 unit tests passed."
+      },
+      {
+        "id": "final-validation",
+        "command": "python3 -B tooling/validate-kit.py --source && python3 -B tooling/validate-kit.py --overlay dist/project-overlay && python3 -B tooling/build-overlay.py --check",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:final-validation",
+        "sanitized_summary": "Source valid for 73 behavioral cases and 47 fixtures; overlay valid; no distribution drift."
+      }
+    ],
+    "changed_files": [
+      "DSML_AGENT_KIT.md",
+      "README.md",
+      "VERSION",
+      ".agent-system/CONTROL.md",
+      ".agent-system/SYSTEM.md",
+      ".agent-system/templates/AGENTS.dsml.template.md",
+      ".agent-system/templates/learning.template.yaml",
+      ".agents/skills/analyze-dsml-project/SKILL.md",
+      ".agents/skills/analyze-dsml-project/references/orientation.md",
+      ".agents/skills/autoresearch/SKILL.md",
+      ".agents/skills/compose-dsml-report/SKILL.md",
+      ".agents/skills/execute-dsml-task/SKILL.md",
+      ".agents/skills/validate-dsml-result/SKILL.md",
+      "tooling/onboard-project.py",
+      "tooling/validate-kit.py",
+      "evals/cases/behavioral-cases.json",
+      "evals/fixtures/synthetic-fixtures.json",
+      "tests/test_onboarding.py",
+      "tests/test_upgrade.py",
+      "tests/test_validate_kit.py",
+      "dist/project-overlay generated content rebuilt for 0.14.0"
+    ]
+  },
+  "results": {
+    "status": "completed",
+    "tests": [
+      {
+        "name": "tests.test_upgrade (audit states A-K)",
+        "status": "passed",
+        "command_ref": "upgrade-unit-tests"
+      },
+      {
+        "name": "unittest discover -s tests",
+        "status": "passed",
+        "command_ref": "final-full-suite",
+        "sanitized_summary": "291 tests."
+      },
+      {
+        "name": "validate-kit --source",
+        "status": "passed",
+        "command_ref": "final-validation"
+      },
+      {
+        "name": "validate-kit --overlay",
+        "status": "passed",
+        "command_ref": "final-validation"
+      },
+      {
+        "name": "build-overlay --check",
+        "status": "passed",
+        "command_ref": "final-validation"
+      },
+      {
+        "name": "fresh smoke and cross-version simulation",
+        "status": "passed",
+        "command_ref": "cross-version-simulation"
+      }
+    ],
+    "metrics": [
+      {
+        "name": "unit_tests_passed",
+        "population": "repository test suite",
+        "implementation": "unittest discover",
+        "value": "291/291",
+        "baseline_value": "282/282 at 0.13.0",
+        "artifact_ref": "tests/test_upgrade.py"
+      }
+    ],
+    "artifacts": [
+      {
+        "kind": "upgrade runtime tooling",
+        "ref": "tooling/onboard-project.py",
+        "classification": "public"
+      },
+      {
+        "kind": "upgrade test suite",
+        "ref": "tests/test_upgrade.py",
+        "classification": "public"
+      },
+      {
+        "kind": "shared agent instruction",
+        "ref": ".agent-system/templates/AGENTS.dsml.template.md",
+        "classification": "public"
+      },
+      {
+        "kind": "system documentation",
+        "ref": ".agent-system/SYSTEM.md",
+        "classification": "public"
+      },
+      {
+        "kind": "human entry card",
+        "ref": "DSML_AGENT_KIT.md",
+        "classification": "public"
+      },
+      {
+        "kind": "control reference",
+        "ref": ".agent-system/CONTROL.md",
+        "classification": "public"
+      },
+      {
+        "kind": "behavioral evaluation cases",
+        "ref": "evals/cases/behavioral-cases.json",
+        "classification": "public"
+      },
+      {
+        "kind": "synthetic evaluation fixtures",
+        "ref": "evals/fixtures/synthetic-fixtures.json",
+        "classification": "public"
+      },
+      {
+        "kind": "generated distribution",
+        "ref": "dist/project-overlay",
+        "classification": "public"
+      }
+    ],
+    "decision": "not_applicable"
+  },
+  "knowledge": {
+    "verified_facts": [
+      "plan_runtime_sync rejects a tampered distribution before any project write; VERSION, AGENTS.md, and obsolete files stay byte-identical on failure.",
+      "The real 0.9.0->0.14.0 upgrade removed five obsolete root-layout toolkit files and converted a contiguous pre-managed AGENTS section into exactly one managed block while preserving custom content.",
+      "A user-modified obsolete toolkit file is preserved with a warning instead of deleted.",
+      "Same-version --repair-runtime semantics are unchanged and remain the only path that ignores version ordering."
+    ],
+    "assumptions": [
+      "The audit's 0.12.0->0.13.0 example maps to the actual release delta; the committed older distribution in this repository was 0.9.0 and was exercised instead."
+    ],
+    "remaining_uncertainty": [
+      "Human review of the 0.14.0 release content has not yet occurred.",
+      "Intertwined unmanaged toolkit content with no contiguous section is intentionally preserved with a manual-merge report rather than auto-edited."
+    ]
+  }
+}

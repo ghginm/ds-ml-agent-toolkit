@@ -15,9 +15,10 @@ DEFAULT_OUTPUT = ROOT / "dist" / "project-overlay"
 
 COPY_TREES = {
     ".agents/skills": ".agents/skills",
-    "adapters": "adapters",
+    "adapters": ".agent-system/adapters",
 }
 COPY_FILES = {
+    "DSML_AGENT_KIT.md": "DSML_AGENT_KIT.md",
     "VERSION": ".agent-system/VERSION",
     ".agent-system/CONTROL.md": ".agent-system/CONTROL.md",
     ".agent-system/SYSTEM.md": ".agent-system/SYSTEM.md",
@@ -39,7 +40,7 @@ COPY_FILES = {
     ".agent-system/templates/learning.template.yaml": ".agent-system/templates/learning.template.yaml",
     ".agent-system/templates/evaluation.template.yaml": ".agent-system/templates/evaluation.template.yaml",
     ".agent-system/templates/run.template.yaml": ".agent-system/templates/run.template.yaml",
-    ".agent-system/templates/AGENTS.dsml.template.md": "AGENTS.dsml.template.md",
+    ".agent-system/templates/AGENTS.dsml.template.md": ".agent-system/templates/AGENTS.dsml.template.md",
     "tooling/create-run.py": ".agent-system/tooling/create-run.py",
     "tooling/finalize-run.py": ".agent-system/tooling/finalize-run.py",
     "tooling/git_preflight.py": ".agent-system/tooling/git_preflight.py",

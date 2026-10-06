@@ -28,6 +28,8 @@ CORE_SKILLS = {
     "validate-dsml-result",
 }
 BUNDLED_SPECIALIZED_SKILLS = {"autoresearch", "compose-dsml-report"}
+MANAGED_BLOCK_START = "<!-- DS/ML Agent Kit:BEGIN managed -->"
+MANAGED_BLOCK_END = "<!-- DS/ML Agent Kit:END managed -->"
 VALID_HARNESSES = {"codex", "copilot", "hermes", "unknown"}
 VALIDATION_COMMAND = "python3 -B .agent-system/tooling/validate-kit.py --installed-project ."
 STATUS_CAPABILITIES = (
@@ -168,20 +170,77 @@ def _read_json(path: Path) -> dict[str, Any]:
     return value
 
 
-def repair_runtime(root: Path, clean_overlay: Path) -> list[str]:
-    """Restore only manifest-owned runtime files from a trusted same-version overlay."""
-    root = root.expanduser().resolve(strict=True)
+def _load_runtime_overlay(
+    clean_overlay: Path, *, label: str = "distribution"
+) -> tuple[str, dict[str, str], str]:
+    """Validate a trusted overlay completely, then return (version, contents, manifest text)."""
     clean_overlay = clean_overlay.expanduser().resolve(strict=True)
     source_manifest_path = clean_overlay / ".agent-system" / "manifest.json"
     source_manifest = _read_json(source_manifest_path)
     if source_manifest.get("schema_version") != "0.2":
-        raise ValueError("repair source manifest must use schema_version '0.2'")
+        raise ValueError(f"{label} manifest must use schema_version '0.2'")
     files = source_manifest.get("files")
     if not isinstance(files, dict) or not files:
-        raise ValueError("repair source manifest must contain runtime files")
+        raise ValueError(f"{label} manifest must contain runtime files")
     source_version = source_manifest.get("toolkit_version")
     if not isinstance(source_version, str) or not source_version.strip():
-        raise ValueError("repair source manifest toolkit_version is invalid")
+        raise ValueError(f"{label} manifest toolkit_version is invalid")
+    contents: dict[str, str] = {}
+    for relative, expected_hash in sorted(files.items()):
+        if (
+            not isinstance(relative, str)
+            or not relative
+            or Path(relative).is_absolute()
+            or ".." in Path(relative).parts
+        ):
+            raise ValueError(f"{label} manifest has unsafe path {relative!r}")
+        if not isinstance(expected_hash, str) or re.fullmatch(r"[0-9a-f]{64}", expected_hash) is None:
+            raise ValueError(f"{label} manifest has invalid hash for {relative}")
+        source = clean_overlay / relative
+        if source.is_symlink() or not source.is_file():
+            raise ValueError(f"{label} runtime file is missing or unsafe: {relative}")
+        content = source.read_text(encoding="utf-8")
+        if hashlib.sha256(content.encode("utf-8")).hexdigest() != expected_hash:
+            raise ValueError(f"{label} runtime hash mismatch: {relative}")
+        contents[relative] = content
+    return source_version.strip(), contents, source_manifest_path.read_text(encoding="utf-8")
+
+
+def _apply_overlay_contents(root: Path, contents: dict[str, str]) -> list[str]:
+    """Atomically write manifest-owned files whose content currently differs."""
+    replaced: list[str] = []
+    for relative, content in sorted(contents.items()):
+        target = root / relative
+        _reject_symlink_components(root, target)
+        current = target.read_text(encoding="utf-8") if target.is_file() else None
+        if current is None or hashlib.sha256(current.encode("utf-8")).hexdigest() != hashlib.sha256(
+            content.encode("utf-8")
+        ).hexdigest():
+            _safe_write(root, target, content)
+            replaced.append(relative)
+    return replaced
+
+
+def _overlay_manifest_write(root: Path, manifest_text: str) -> str | None:
+    target_manifest_path = root / ".agent-system" / "manifest.json"
+    _reject_symlink_components(root, target_manifest_path)
+    target_manifest_text = (
+        target_manifest_path.read_text(encoding="utf-8")
+        if target_manifest_path.is_file()
+        else None
+    )
+    if target_manifest_text == manifest_text:
+        return None
+    _safe_write(root, target_manifest_path, manifest_text)
+    return ".agent-system/manifest.json"
+
+
+def repair_runtime(root: Path, clean_overlay: Path) -> list[str]:
+    """Restore only manifest-owned runtime files from a trusted same-version overlay."""
+    root = root.expanduser().resolve(strict=True)
+    source_version, contents, source_manifest_text = _load_runtime_overlay(
+        clean_overlay, label="repair source"
+    )
     installed_version_path = root / ".agent-system" / "VERSION"
     if installed_version_path.exists():
         _reject_symlink_components(root, installed_version_path)
@@ -191,42 +250,197 @@ def repair_runtime(root: Path, clean_overlay: Path) -> list[str]:
                 "repair source version does not match the installed toolkit version"
             )
 
-    repaired: list[str] = []
-    for relative, expected_hash in sorted(files.items()):
-        if (
-            not isinstance(relative, str)
-            or not relative
-            or Path(relative).is_absolute()
-            or ".." in Path(relative).parts
-        ):
-            raise ValueError(f"repair source manifest has unsafe path {relative!r}")
-        if not isinstance(expected_hash, str) or re.fullmatch(r"[0-9a-f]{64}", expected_hash) is None:
-            raise ValueError(f"repair source manifest has invalid hash for {relative}")
-        source = clean_overlay / relative
-        if source.is_symlink() or not source.is_file():
-            raise ValueError(f"repair source runtime file is missing or unsafe: {relative}")
-        content = source.read_text(encoding="utf-8")
-        if hashlib.sha256(content.encode("utf-8")).hexdigest() != expected_hash:
-            raise ValueError(f"repair source runtime hash mismatch: {relative}")
+    repaired = _apply_overlay_contents(root, contents)
+    manifest_repair = _overlay_manifest_write(root, source_manifest_text)
+    if manifest_repair is not None:
+        repaired.append(manifest_repair)
+    return repaired
+
+
+def _parse_version(text: str | None) -> tuple[int, ...] | None:
+    if text is None:
+        return None
+    match = re.fullmatch(r"\d+(?:\.\d+)*", text.strip())
+    if match is None:
+        return None
+    return tuple(int(part) for part in match.group(0).split("."))
+
+
+def _version_relation(installed_version: str | None, source_version: str) -> str:
+    """Classify a distribution overlay as fresh/repair/upgrade/downgrade."""
+    if installed_version is None or not installed_version.strip():
+        return "fresh"
+    installed_version = installed_version.strip()
+    if installed_version == source_version:
+        return "repair"
+    installed_parts = _parse_version(installed_version)
+    source_parts = _parse_version(source_version)
+    if installed_parts is None or source_parts is None:
+        raise ValueError(
+            "cannot compare installed toolkit version "
+            f"{installed_version!r} with distribution version {source_version!r}"
+        )
+    width = max(len(installed_parts), len(source_parts))
+    left = installed_parts + (0,) * (width - len(installed_parts))
+    right = source_parts + (0,) * (width - len(source_parts))
+    if right > left:
+        return "upgrade"
+    if right < left:
+        return "downgrade"
+    return "repair"
+
+
+def _installed_toolkit_state(root: Path) -> tuple[str | None, dict[str, str] | None]:
+    """Read the installed version and manifest-owned file map, tolerating a missing kit."""
+    installed_version: str | None = None
+    installed_files: dict[str, str] | None = None
+    version_path = root / ".agent-system" / "VERSION"
+    if version_path.is_symlink():
+        raise ValueError("installed toolkit VERSION must not be a symbolic link")
+    if version_path.is_file():
+        installed_version = version_path.read_text(encoding="utf-8").strip()
+    manifest_path = root / ".agent-system" / "manifest.json"
+    if manifest_path.is_symlink():
+        raise ValueError("installed toolkit manifest must not be a symbolic link")
+    if manifest_path.is_file():
+        try:
+            manifest = _read_json(manifest_path)
+        except (OSError, UnicodeError, ValueError):
+            manifest = {}
+        if installed_version is None and isinstance(manifest.get("toolkit_version"), str):
+            installed_version = manifest["toolkit_version"].strip() or None
+        files = manifest.get("files")
+        if isinstance(files, dict) and files:
+            candidate = {
+                relative: expected_hash
+                for relative, expected_hash in files.items()
+                if isinstance(relative, str) and isinstance(expected_hash, str)
+            }
+            installed_files = candidate or None
+    return installed_version, installed_files
+
+
+def _previous_template_candidates(root: Path) -> list[Path]:
+    """Template locations used by current and pre-refactor distribution layouts."""
+    return [
+        root / ".agent-system" / "templates" / "AGENTS.dsml.template.md",
+        root / "AGENTS.dsml.template.md",
+    ]
+
+
+def plan_runtime_sync(
+    root: Path, clean_overlay: Path, *, allow_downgrade: bool = False
+) -> dict[str, Any]:
+    """Build a complete, validated runtime sync plan without writing anything."""
+    root = root.expanduser().resolve(strict=True)
+    source_version, contents, manifest_text = _load_runtime_overlay(clean_overlay)
+    installed_version, installed_files = _installed_toolkit_state(root)
+    relation = _version_relation(installed_version, source_version)
+    if relation == "downgrade" and not allow_downgrade:
+        raise ValueError(
+            f"installed toolkit version {installed_version} is newer than distribution "
+            f"version {source_version}; refusing to downgrade. Use a distribution of "
+            f"version {installed_version} or newer, or re-run with --allow-downgrade "
+            "for explicit downgrade intent."
+        )
+    writes = [
+        (relative, content)
+        for relative, content in sorted(contents.items())
+        if _overlay_target_differs(root, relative, content)
+    ]
+    removals: list[str] = []
+    preserved: list[dict[str, str]] = []
+    if relation in {"upgrade", "downgrade"} and installed_files is not None:
+        for relative, expected_hash in sorted(installed_files.items()):
+            if (
+                relative in contents
+                or not relative
+                or Path(relative).is_absolute()
+                or ".." in Path(relative).parts
+            ):
+                continue
+            target = root / relative
+            _reject_symlink_components(root, target)
+            if not target.is_file():
+                continue
+            current_hash = hashlib.sha256(target.read_bytes()).hexdigest()
+            if re.fullmatch(r"[0-9a-f]{64}", expected_hash or "") and current_hash == expected_hash:
+                removals.append(relative)
+            else:
+                preserved.append(
+                    {
+                        "path": relative,
+                        "reason": (
+                            "the installed copy differs from the old toolkit manifest "
+                            "and the file is absent from the new release; preserved as "
+                            "user-modified"
+                        ),
+                    }
+                )
+    return {
+        "state": relation,
+        "from_version": installed_version.strip() if installed_version else None,
+        "to_version": source_version,
+        "writes": writes,
+        "removals": removals,
+        "preserved": preserved,
+        "manifest_text": manifest_text,
+    }
+
+
+def _overlay_target_differs(root: Path, relative: str, content: str) -> bool:
+    target = root / relative
+    _reject_symlink_components(root, target)
+    if not target.is_file():
+        return True
+    current = target.read_text(encoding="utf-8")
+    return hashlib.sha256(current.encode("utf-8")).hexdigest() != hashlib.sha256(
+        content.encode("utf-8")
+    ).hexdigest()
+
+
+def _prune_empty_toolkit_directories(root: Path, removed_relatives: list[str]) -> None:
+    candidates: set[str] = set()
+    for relative in removed_relatives:
+        parent = Path(relative).parent
+        while str(parent) not in {".", ""}:
+            candidates.add(str(parent))
+            parent = parent.parent
+    for relative in sorted(candidates, key=lambda item: -len(Path(item).parts)):
+        if not relative.startswith(".agent-system") and not relative.startswith(".agents"):
+            continue
+        directory = root / relative
+        if directory.is_dir() and not directory.is_symlink() and not any(directory.iterdir()):
+            try:
+                directory.rmdir()
+            except OSError:
+                pass
+
+
+def apply_runtime_sync(plan: dict[str, Any], root: Path) -> dict[str, Any]:
+    """Apply a previously validated plan: write, remove obsolete, rewrite manifest last."""
+    root = root.expanduser().resolve(strict=True)
+    replaced = _apply_overlay_contents(root, dict(plan["writes"]))
+    removed: list[str] = []
+    for relative in plan["removals"]:
         target = root / relative
         _reject_symlink_components(root, target)
-        current = target.read_text(encoding="utf-8") if target.is_file() else None
-        if current is None or hashlib.sha256(current.encode("utf-8")).hexdigest() != expected_hash:
-            _safe_write(root, target, content)
-            repaired.append(relative)
+        if target.is_file() and stat.S_ISREG(os.lstat(target).st_mode):
+            target.unlink()
+            removed.append(relative)
+    _prune_empty_toolkit_directories(root, plan["removals"])
+    manifest_update = _overlay_manifest_write(root, plan["manifest_text"])
+    if manifest_update is not None:
+        replaced.append(manifest_update)
+    return {**plan, "replaced": replaced, "removed": removed}
 
-    source_manifest_text = source_manifest_path.read_text(encoding="utf-8")
-    target_manifest_path = root / ".agent-system" / "manifest.json"
-    _reject_symlink_components(root, target_manifest_path)
-    target_manifest_text = (
-        target_manifest_path.read_text(encoding="utf-8")
-        if target_manifest_path.is_file()
-        else None
-    )
-    if target_manifest_text != source_manifest_text:
-        _safe_write(root, target_manifest_path, source_manifest_text)
-        repaired.append(".agent-system/manifest.json")
-    return repaired
+
+def sync_runtime(
+    root: Path, clean_overlay: Path, *, allow_downgrade: bool = False
+) -> dict[str, Any]:
+    """Plan then apply a runtime install/repair/upgrade sync from a trusted overlay."""
+    plan = plan_runtime_sync(root, clean_overlay, allow_downgrade=allow_downgrade)
+    return apply_runtime_sync(plan, root)
 
 
 def _active_markdown_lines(text: str) -> list[str]:
@@ -709,10 +923,12 @@ def _candidate_inferred_values(
 
 
 def _instruction_target(root: Path, harness: str) -> tuple[Path | None, Path | None]:
+    runtime_template = root / ".agent-system" / "templates" / "AGENTS.dsml.template.md"
+    adapters_root = root / ".agent-system" / "adapters"
     if harness == "copilot":
         return (
             root / ".github" / "copilot-instructions.md",
-            root / "adapters" / "copilot" / "copilot-instructions.fragment.md",
+            adapters_root / "copilot" / "copilot-instructions.fragment.md",
         )
     if harness in {"codex", "hermes"}:
         hermes_context = next(
@@ -723,13 +939,13 @@ def _instruction_target(root: Path, harness: str) -> tuple[Path | None, Path | N
             override = root / "AGENTS.override.md"
             agents = root / "AGENTS.md"
             if override.is_file() and not agents.is_file():
-                return override, root / "AGENTS.dsml.template.md"
+                return override, runtime_template
             if hermes_context is not None:
-                return hermes_context, root / "AGENTS.dsml.template.md"
+                return hermes_context, runtime_template
             if override.is_file():
-                return agents, root / "AGENTS.dsml.template.md"
-            return agents, root / "AGENTS.dsml.template.md"
-        return root / "AGENTS.md", root / "AGENTS.dsml.template.md"
+                return agents, runtime_template
+            return agents, runtime_template
+        return root / "AGENTS.md", runtime_template
     return None, None
 
 
@@ -741,14 +957,16 @@ def ensure_harness_instructions(root: Path, harness: str) -> tuple[str, list[str
     _reject_symlink_components(root, source)
     if target.is_file():
         text = target.read_text(encoding="utf-8")
-        instruction_sources = (root / "AGENTS.dsml.template.md",)
+        instruction_sources = (
+            root / ".agent-system" / "templates" / "AGENTS.dsml.template.md",
+        )
         if harness == "copilot":
             instruction_sources += (source,)
         if _instructions_are_complete(text, instruction_sources):
             return f"ready in `{target.relative_to(root)}`", [], []
         if harness == "copilot":
             action = (
-                "Merge `AGENTS.dsml.template.md` and "
+                "Merge `.agent-system/templates/AGENTS.dsml.template.md` and "
                 f"`{source.relative_to(root)}` into the existing `{target.relative_to(root)}`. "
                 "The existing file was preserved unchanged."
             )
@@ -760,10 +978,179 @@ def ensure_harness_instructions(root: Path, harness: str) -> tuple[str, list[str
         return f"merge required in `{target.relative_to(root)}`", [], [action]
     source_text = source.read_text(encoding="utf-8")
     if harness == "copilot":
-        runtime_text = (root / "AGENTS.dsml.template.md").read_text(encoding="utf-8")
+        runtime_text = (
+            root / ".agent-system" / "templates" / "AGENTS.dsml.template.md"
+        ).read_text(encoding="utf-8")
         source_text = runtime_text + "\n\n" + source_text
     _safe_write(root, target, source_text)
     return f"created `{target.relative_to(root)}`", [str(target.relative_to(root))], []
+
+
+def _strip_managed_markers(text: str) -> str:
+    return "\n".join(
+        line
+        for line in text.splitlines()
+        if line.strip() not in {MANAGED_BLOCK_START, MANAGED_BLOCK_END}
+    ).strip("\n")
+
+
+def _managed_block(template_text: str) -> str:
+    body = _strip_managed_markers(template_text)
+    return f"{MANAGED_BLOCK_START}\n{body}\n{MANAGED_BLOCK_END}\n"
+
+
+def _managed_marker_spans(lines: list[str]) -> tuple[list[tuple[int, int]], list[int]]:
+    """Return (paired start/end line spans, stray unpaired marker indices)."""
+    pairs: list[tuple[int, int]] = []
+    strays: list[int] = []
+    pending: int | None = None
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped == MANAGED_BLOCK_START:
+            if pending is None:
+                pending = index
+            else:
+                strays.append(index)
+        elif stripped == MANAGED_BLOCK_END:
+            if pending is None:
+                strays.append(index)
+            else:
+                pairs.append((pending, index))
+                pending = None
+    if pending is not None:
+        strays.append(pending)
+    return pairs, strays
+
+
+def _find_line_run(haystack: list[str], needle: list[str]) -> tuple[int, int] | None:
+    """Find the first contiguous run of needle lines (whitespace-normalized)."""
+    normalized_needle = [line.strip() for line in needle]
+    while normalized_needle and not normalized_needle[0]:
+        normalized_needle.pop(0)
+    while normalized_needle and not normalized_needle[-1]:
+        normalized_needle.pop()
+    if not normalized_needle:
+        return None
+    normalized_hay = [line.strip() for line in haystack]
+    width = len(normalized_needle)
+    for start in range(len(normalized_hay) - width + 1):
+        if normalized_hay[start:start + width] == normalized_needle:
+            return start, start + width
+    return None
+
+
+def _splice_lines(before: list[str], block_text: str, after: list[str]) -> list[str]:
+    while before and not before[-1].strip():
+        before.pop()
+    while after and not after[0].strip():
+        after.pop(0)
+    block_lines = block_text.rstrip("\n").splitlines()
+    out = list(before)
+    if out:
+        out.append("")
+    out.extend(block_lines)
+    if after:
+        out.append("")
+        out.extend(after)
+    return out
+
+
+def update_managed_instructions(
+    root: Path, harness: str, *, previous_template: str | None
+) -> tuple[str, list[str]]:
+    """Refresh the toolkit-managed instruction block during an upgrade.
+
+    Content outside the managed markers is preserved exactly. Pre-managed files
+    migrate only when the toolkit section is located exactly; ambiguous files
+    are preserved unchanged and left to the regular merge report.
+    """
+    root = root.resolve()
+    target, source = _instruction_target(root, harness)
+    if target is None or source is None:
+        return "unverified; the instruction target for this harness is unknown", []
+    _reject_symlink_components(root, target)
+    _reject_symlink_components(root, source)
+    if not target.is_file():
+        return "not present; onboarding will create it with the managed section", []
+    template_text = source.read_text(encoding="utf-8")
+    block = _managed_block(template_text)
+    text = target.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    relative = str(target.relative_to(root))
+
+    pairs, strays = _managed_marker_spans(lines)
+    if pairs:
+        drop: set[int] = set(strays)
+        for start, end in pairs:
+            drop.update(range(start, end + 1))
+        replacement = block.rstrip("\n").splitlines()
+        out: list[str] = []
+        first_pair_start = pairs[0][0]
+        for index, line in enumerate(lines):
+            if index in drop:
+                if index == first_pair_start:
+                    out.extend(replacement)
+                continue
+            out.append(line)
+        result = "\n".join(out) + "\n"
+        if result == text:
+            return "managed toolkit section already current", []
+        _safe_write(root, target, result)
+        return "managed toolkit section refreshed in place", [relative]
+
+    needle = None
+    if previous_template is not None:
+        stripped = _strip_managed_markers(previous_template)
+        if stripped.strip():
+            needle = stripped.splitlines()
+    if needle is not None:
+        run = _find_line_run(lines, needle)
+        if run is not None:
+            result = "\n".join(
+                _splice_lines(lines[: run[0]], block, lines[run[1]:])
+            ) + "\n"
+            _safe_write(root, target, result)
+            return "pre-managed toolkit section converted to a managed block", [relative]
+
+    toolkit_lines: set[str] = set()
+    for candidate in (template_text, previous_template or ""):
+        for line in _active_markdown_lines(candidate):
+            if line.lstrip().startswith("- "):
+                toolkit_lines.add(" ".join(line.split()))
+    if toolkit_lines & _normalized_instruction_lines(target):
+        return (
+            "existing unmanaged toolkit content could not be located as one exact "
+            "section; preserved unchanged, manual merge reported by onboarding",
+            [],
+        )
+    result = "\n".join(_splice_lines(lines, block, [])) + "\n"
+    _safe_write(root, target, result)
+    return "managed toolkit section installed", [relative]
+
+
+def _upgrade_header(report: dict[str, Any], block_status: str | None) -> str:
+    state = report["state"]
+    if state == "fresh":
+        lines = [
+            f"Toolkit runtime: installed version {report['to_version']} "
+            "(no previous kit detected)."
+        ]
+    elif state == "repair":
+        lines = [
+            f"Toolkit runtime: same-version repair for {report['to_version']}; "
+            f"{len(report['replaced'])} file(s) restored or updated."
+        ]
+    else:
+        lines = [
+            f"Toolkit runtime: {state} {report['from_version']} -> "
+            f"{report['to_version']}; {len(report['replaced'])} file(s) updated, "
+            f"{len(report['removed'])} obsolete toolkit file(s) removed."
+        ]
+    for item in report["preserved"]:
+        lines.append(f"Preserved `{item['path']}`: {item['reason']}.")
+    if block_status is not None:
+        lines.append(f"Project instructions: {block_status}.")
+    return "\n".join(lines) + "\n\n"
 
 
 def _project_map_alternative(root: Path) -> Path | None:
@@ -925,8 +1312,9 @@ def _require_installed_overlay(root: Path) -> None:
         ".agent-system/VERSION",
         ".agent-system/manifest.json",
         ".agent-system/project.template.yaml",
+        ".agent-system/templates/AGENTS.dsml.template.md",
         ".agents/skills",
-        "AGENTS.dsml.template.md",
+        "DSML_AGENT_KIT.md",
     )
     missing = [relative for relative in required if not (root / relative).exists()]
     if missing:
@@ -1239,29 +1627,87 @@ def main() -> int:
         metavar="CLEAN_OVERLAY",
         help="restore manifest-owned files from a trusted same-version clean overlay",
     )
+    parser.add_argument(
+        "--upgrade-from",
+        type=Path,
+        metavar="CLEAN_OVERLAY",
+        help=(
+            "install, repair, or upgrade the toolkit runtime from a trusted "
+            "distribution overlay; version states are detected automatically"
+        ),
+    )
+    parser.add_argument(
+        "--allow-downgrade",
+        action="store_true",
+        help="explicit intent to apply an older distribution over a newer installation",
+    )
     args = parser.parse_args()
+    if args.upgrade_from is not None and args.repair_runtime is not None:
+        print(
+            "DS/ML Agent Kit upgrade: ACTION_REQUIRED\n\n"
+            "Setup error: --upgrade-from and --repair-runtime cannot be combined"
+        )
+        return 2
+    plan: dict[str, Any] | None = None
+    upgrade_root: Path = args.installed_project.expanduser()
+    previous_template: str | None = None
+    if args.upgrade_from is not None:
+        try:
+            upgrade_root = upgrade_root.resolve(strict=True)
+            for template_path in _previous_template_candidates(upgrade_root):
+                if template_path.is_file():
+                    _reject_symlink_components(upgrade_root, template_path)
+                    previous_template = template_path.read_text(encoding="utf-8")
+                    break
+            plan = plan_runtime_sync(
+                upgrade_root, args.upgrade_from, allow_downgrade=args.allow_downgrade
+            )
+            if plan["state"] in {"upgrade", "downgrade"}:
+                args.recheck = True
+        except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
+            print(
+                "DS/ML Agent Kit upgrade: ACTION_REQUIRED\n\n"
+                f"No changes were made to the installed toolkit.\nReason: {exc}"
+            )
+            return 2
     try:
         repaired: list[str] = []
-        if args.repair_runtime is not None:
-            repaired = repair_runtime(args.installed_project, args.repair_runtime)
-        verdict, summary = onboard_repository(
-            args.installed_project,
-            args.harness,
-            activation_verified=args.activation_verified,
-            recheck=args.recheck,
-        )
-        if args.repair_runtime is not None:
-            summary = (
-                f"Runtime integrity: repaired {len(repaired)} manifest-owned file(s); validation completed.\n"
-                + summary
+        if plan is not None:
+            report = apply_runtime_sync(plan, upgrade_root)
+            block_status: str | None = None
+            if report["state"] in {"upgrade", "downgrade"}:
+                block_status, _ = update_managed_instructions(
+                    upgrade_root, args.harness, previous_template=previous_template
+                )
+            verdict, summary = onboard_repository(
+                args.installed_project,
+                args.harness,
+                activation_verified=args.activation_verified,
+                recheck=args.recheck,
             )
+            summary = _upgrade_header(report, block_status) + summary
+        else:
+            if args.repair_runtime is not None:
+                repaired = repair_runtime(args.installed_project, args.repair_runtime)
+            verdict, summary = onboard_repository(
+                args.installed_project,
+                args.harness,
+                activation_verified=args.activation_verified,
+                recheck=args.recheck,
+            )
+            if args.repair_runtime is not None:
+                summary = (
+                    f"Runtime integrity: repaired {len(repaired)} manifest-owned file(s); validation completed.\n"
+                    + summary
+                )
     except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
         status_error: Exception | None = None
         try:
             _write_setup_error_status(args.installed_project.resolve(), args.harness, exc)
         except (OSError, UnicodeError, ValueError) as write_exc:
             status_error = write_exc
-        message = f"DS/ML Agent Kit onboarding: ACTION_REQUIRED\n\nSetup error: {exc}"
+        label = "upgrade" if plan is not None else "onboarding"
+        message = f"DS/ML Agent Kit {label}: ACTION_REQUIRED\n\nSetup error: {exc}"
         if status_error is not None:
             message += f"\nOnboarding status was not written safely: {status_error}"
         print(message)

@@ -98,7 +98,9 @@
     },
     {
       "id": "generic-ml-question",
-      "repository": {"files": {}},
+      "repository": {
+        "files": {}
+      },
       "raw_evidence": [
         "The user asks what calibration means and provides no project or repository."
       ]
@@ -551,6 +553,112 @@
       },
       "raw_evidence": [
         "Repository evidence supports two plausible primary metrics, so the agent must ask which one defines success before baseline or candidate mutation."
+      ]
+    },
+    {
+      "id": "git-non-repository",
+      "repository": {
+        "files": {
+          "README.md": "Synthetic standalone project documentation with no Git metadata."
+        }
+      },
+      "raw_evidence": [
+        "The project root is not inside a Git repository; auto-detect Git preflight reports status not_repository and no issue."
+      ]
+    },
+    {
+      "id": "git-feature-missing-batch",
+      "repository": {
+        "files": {
+          "README.md": "Synthetic inference package. The public API accepts one record per call.",
+          "src/inference.py": "def predict_one(record):\n    return record['score']\n",
+          "tests/test_inference.py": "def test_predict_one():\n    assert predict_one({'score': 0.7}) == 0.7\n"
+        }
+      },
+      "raw_evidence": [
+        "The current inference API supports only one prediction record per call; no batch prediction function or regression test exists."
+      ]
+    },
+    {
+      "id": "git-lag-leakage-bug",
+      "repository": {
+        "files": {
+          "src/features.py": "def add_lag_features(frame):\n    frame['target_lag_1'] = frame['target'].shift(0)\n    return frame\n",
+          "tests/test_features.py": "A regression test must prove target_lag_1 uses the prior row rather than the current target."
+        }
+      },
+      "raw_evidence": [
+        "The lag feature uses shift(0), which copies the current target into target_lag_1 and leaks outcome information."
+      ]
+    },
+    {
+      "id": "git-training-refactor",
+      "repository": {
+        "files": {
+          "src/training.py": "def tune_and_fit_final(train, validation, full_data):\n    params = choose_params(train, validation)\n    return fit_model(full_data, params)\n",
+          "tests/test_training.py": "The selected parameters and final-fit predictions are the behavior-preservation baseline for restructuring."
+        }
+      },
+      "raw_evidence": [
+        "Hyperparameter tuning and final fit are coupled in one function even though the existing tests define behavior that must remain unchanged."
+      ]
+    },
+    {
+      "id": "structural-script-heavy-project",
+      "repository": {
+        "files": {
+          "README.md": "Synthetic legacy forecasting project. Train with python3 training.py and score with python3 predict.py.",
+          "training.py": "Root script loads config_old/settings.json, imports helpers.py, trains the model, and writes model.pkl.",
+          "predict.py": "Root scoring command loads model.pkl and writes forecasts.csv; an external scheduler still invokes this exact path, so it must remain as a thin documented compatibility shim after migration.",
+          "helpers.py": "Shared preprocessing used by both root scripts.",
+          "config_old/settings.json": "Synthetic training and scoring settings.",
+          "test/test_training.py": "Covers the root training.py command and the expected model artifact.",
+          "setup.py": "Minimal legacy packaging metadata without a package directory.",
+          "PROJECT_MAP.md": "Stale map naming training.py, helpers.py, config_old, and test/ as the canonical architecture and entry points.",
+          "tooling/__pycache__/legacy.cpython-312.pyc": "Synthetic generated Python bytecode that must not remain in intended changes.",
+          "debug-forecast-output.json": "Temporary root-level debug output from migration work that must be removed before completion."
+        }
+      },
+      "raw_evidence": [
+        "The user requested a broad migration from root scripts to a conventional src/forecasting package with pyproject.toml, tests/, and one documented CLI while preserving training and scoring behavior.",
+        "The repository uses Git and a sibling Git worktree is practical. The external scheduler requires predict.py to remain as a thin documented compatibility shim, but no consumer requires training.py, helpers.py, config_old, test/, or setup.py after parity is verified.",
+        "The architecture and entry points will materially change, PROJECT_MAP.md is stale, generated Python caches are repeatable and should be ignored, and the debug JSON output is temporary rather than a legitimate root file."
+      ]
+    },
+    {
+      "id": "structural-normal-feature-project",
+      "repository": {
+        "files": {
+          "pyproject.toml": "Defines the synthetic forecast package and its existing test command.",
+          "src/forecasting/validation.py": "def validate_horizon(value):\n    return value > 0\n",
+          "tests/test_validation.py": "Covers positive and zero forecast horizons.",
+          "PROJECT_MAP.md": "Current map of the unchanged src/forecasting package, data flow, and entry points.",
+          "README.md": "Current main workflow and test commands remain accurate for this focused validation fix.",
+          "AGENTS.md": "Durable project guidance remains unchanged by a negative-horizon regression fix."
+        }
+      },
+      "raw_evidence": [
+        "The project already has one clear conventional package layout; the request changes one validation rule and its focused regression test only, without changing architecture, commands, data flow, or durable instructions."
+      ]
+    },
+    {
+      "id": "toolkit-upgrade-older-install",
+      "repository": {
+        "files": {
+          ".agent-system/VERSION": "0.12.0\n",
+          ".agent-system/manifest.json": "schema_version 0.2; toolkit_version 0.12.0; hashes for five runtime files including .agent-system/tooling/legacy-merge.py",
+          "AGENTS.md": "# Project rules\n\nCustom project rule: keep the release tag current.\n\n## Agent system\n\n(contiguous 0.12.0 toolkit section, no managed markers)\n",
+          "PROJECT_MAP.md": "# Project map\n\nHand-maintained by the team; includes production runbook links.\n",
+          ".agent-system/tooling/legacy-merge.py": "Toolkit-owned script from 0.12.0; unmodified since install; absent from the 0.13.0 distribution.",
+          ".agent-system/local/request-events.jsonl": "Ignored local request metadata; project-owned.",
+          ".agents/skills/sku-lookup/SKILL.md": "Project-specific skill created after setup; preserved."
+        }
+      },
+      "raw_evidence": [
+        "Supplied distribution manifest declares toolkit_version 0.13.0; installed .agent-system/VERSION is 0.12.0.",
+        "legacy-merge.py exists in the installed manifest and its file matches the recorded hash; the newer manifest has no entry for it.",
+        "AGENTS.md keeps the custom project rule outside a contiguous 0.12.0 toolkit section.",
+        "PROJECT_MAP.md, .agent-system/local state, and the sku-lookup project skill contain user content."
       ]
     }
   ]
