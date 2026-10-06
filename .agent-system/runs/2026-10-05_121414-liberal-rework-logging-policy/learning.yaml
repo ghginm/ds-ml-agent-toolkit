@@ -1,0 +1,40 @@
+{
+  "schema_version": "0.4",
+  "timestamp": "2026-10-05",
+  "toolkit_version": "0.9.0",
+  "run_ref": ".agent-system/runs/2026-10-05_121414-liberal-rework-logging-policy/run.yaml",
+  "request": {
+    "kind": "remediation",
+    "topics": [
+      "rework-logging",
+      "policy",
+      "agent-kit"
+    ],
+    "deliverable": "toolkit-policy"
+  },
+  "routing": {
+    "skill": "execute-dsml-task",
+    "mode": "develop",
+    "initial_skill": null,
+    "initial_mode": null,
+    "corrected": false
+  },
+  "outcome": {
+    "execution": "completed",
+    "user_outcome": "unknown",
+    "reason_tags": [
+      "policy-amendment",
+      "run-record-scaffolded"
+    ]
+  },
+  "signals": [
+    {
+      "type": "rework_logging_threshold",
+      "scope": "project",
+      "importance": "high",
+      "summary": "Run records were previously gated to the three predefined workflow contracts, so audits and implementation passes that reworked the project (e.g., the correctness/leakage/contract revision on branch fix/forecasting-reliability) were not logged and their context was lost.",
+      "suggested_change": "Open a sibling run.yaml + learning.yaml under .agent-system/runs/<run-id>/ for any major rework in this repo; err on the side of logging.",
+      "evidence_ref": ".agent-system/runs/2026-10-05_121414-liberal-rework-logging-policy/run.yaml#knowledge"
+    }
+  ]
+}

@@ -1,0 +1,211 @@
+{
+  "schema_version": "0.1",
+  "task": {
+    "id": "2026-10-05_121414-liberal-rework-logging-policy",
+    "mode": "tracked",
+    "goal": "Open a project-local rule that creates a run record for any major rework in this repo (not only the three predefined workflow contracts) and apply it to the current session.",
+    "scope": [
+      "AGENTS.md at the repository root (project-local contract).",
+      "Cross-reference to .agent-system/SYSTEM.md and the run/learning JSON schemas."
+    ],
+    "non_goals": [
+      "Edit kit-owned files (.agent-system/SYSTEM.md, .agent-system/CONTROL.md, schemas, templates, workflows).",
+      "Change the overlay template that ships to downstream consumers.",
+      "Change the run/learning schemas or the create-run.py helper."
+    ],
+    "constraints": [
+      "Reuse tooling/create-run.py to scaffold the sibling run/learning records; do not bypass it.",
+      "Preserve the existing AGENTS.md bullets and overall style; add new bullets, do not rewrite.",
+      "Never copy secrets, connection strings, full SQL, or large payloads into the run record.",
+      "Do not perform destructive Git operations (no reset, rebase, merge, or stash on dirty/diverged worktrees)."
+    ],
+    "budget": {
+      "compute": "local; no GPU",
+      "time": "single session, bounded"
+    },
+    "evaluation_plan": [
+      "Re-read AGENTS.md after the edit and confirm the trigger list, sibling-pair files, schema cross-reference, and 'err on the side of logging' line are present.",
+      "Run python3 -B tooling/validate-kit.py and confirm the source toolkit is still valid.",
+      "Run python3 -B -m unittest discover -s tests -v and confirm the unit suite is still green.",
+      "Re-validate the new run.yaml and learning.yaml against .agent-system/schemas/{run,learning}.schema.json (covered transitively by the existing unit suite)."
+    ],
+    "acceptance": [
+      "AGENTS.md at the repository root contains the liberal-rework-logging rule with the trigger list, sibling-pair files, schema cross-reference, and the err-on-the-side-of-logging line.",
+      "run.yaml and learning.yaml exist under .agent-system/runs/2026-10-05_121414-liberal-rework-logging-policy/ and conform to the schemas documented in .agent-system/SYSTEM.md.",
+      "python3 -B tooling/validate-kit.py exits 0 after the policy and run-record edits.",
+      "python3 -B -m unittest discover -s tests -v exits 0 after the policy and run-record edits."
+    ],
+    "expected_outputs": [
+      "AGENTS.md",
+      ".agent-system/runs/2026-10-05_121414-liberal-rework-logging-policy/run.yaml",
+      ".agent-system/runs/2026-10-05_121414-liberal-rework-logging-policy/learning.yaml"
+    ]
+  },
+  "policy": {
+    "policy_ref": ".agent-system/policy/capability-policy.yaml",
+    "data_classification": "public",
+    "allowed_actions": [
+      "Read and edit the authorized source repository.",
+      "Create run/learning records under .agent-system/runs/ via tooling/create-run.py.",
+      "Run local deterministic validation and the unit test suite."
+    ],
+    "approval_gates": [
+      {
+        "action": "git_remote_change",
+        "status": "approved",
+        "authority": "explicit user chat message: 'push' (followed by 'agent started, push now')",
+        "evidence_ref": "chat:user-push-authorization"
+      }
+    ],
+    "authorization_boundary": [
+      "No edits to kit-owned files (.agent-system/SYSTEM.md, .agent-system/CONTROL.md, schemas, templates, workflows) from this project-local rule.",
+      "No commit, push, or release publication without explicit user authorization."
+    ]
+  },
+  "provenance": {
+    "repository": {
+      "revision": "e6933f04408a93e6a3ea51eec13e0d0ee547f7d9",
+      "working_tree": "clean",
+      "diff_ref": "feat/liberal-rework-logging-policy"
+    },
+    "project_map_version": null,
+    "environment": {
+      "host": "WSL",
+      "python": "3.14.7"
+    },
+    "inputs": [
+      {
+        "kind": "implementation brief",
+        "ref": "user attachment pasted_content_2026-10-05_16-12-10-382_8e5650.txt",
+        "classification": "public"
+      }
+    ],
+    "versions": {
+      "toolkit": "0.9.0"
+    },
+    "seeds": []
+  },
+  "execution": {
+    "tools": [
+      "git",
+      "tooling/create-run.py",
+      "tooling/validate-kit.py",
+      "python3 unittest"
+    ],
+    "commands": [
+      {
+        "id": "git-fetch-and-branch",
+        "command": "git fetch origin && git checkout -b feat/liberal-rework-logging-policy",
+        "capability": "task_scoped_local_git",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:git-fetch-and-branch",
+        "sanitized_summary": "Created branch feat/liberal-rework-logging-policy from e6933f0."
+      },
+      {
+        "id": "scaffold-run-record",
+        "command": "python3 -B tooling/create-run.py --project-root . --id 2026-10-05_121414-liberal-rework-logging-policy --goal 'Open a project-local rule that creates a run record for any major rework in this repo (not only the three predefined workflow contracts) and apply it to the current session.' --acceptance 'AGENTS.md at the repository root contains the liberal-rework-logging rule with the trigger list, sibling-pair files, schema cross-reference, and the err-on-the-side-of-logging line.' --acceptance 'run.yaml and learning.yaml exist under .agent-system/runs/2026-10-05_121414-liberal-rework-logging-policy/ and conform to the schemas documented in .agent-system/SYSTEM.md.' --acceptance 'python3 -B tooling/validate-kit.py exits 0 after the policy and run-record edits.' --acceptance 'python3 -B -m unittest discover -s tests -v exits 0 after the policy and run-record edits.' --request-kind remediation --skill execute-dsml-task --mode develop --topic rework-logging --topic policy --topic agent-kit --deliverable toolkit-policy",
+        "capability": "sanitized_artifacts",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:scaffold-run-record",
+        "sanitized_summary": "Created run.yaml and learning.yaml with schema_version 0.1 / 0.4 and populated provenance."
+      },
+      {
+        "id": "patch-agents-md",
+        "command": "patch (Hermes internal tool) on AGENTS.md",
+        "capability": "task_scoped_local_edit",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:patch-agents-md",
+        "sanitized_summary": "AGENTS.md grew from 11 to 13 top-level bullets with a sub-list trigger, sibling-pair rule, and sanitization guard."
+      },
+      {
+        "id": "validate-kit",
+        "command": "python3 -B tooling/validate-kit.py",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:validate-kit",
+        "sanitized_summary": "Source toolkit valid: 3 core skills plus bundled specialized skills; 63 behavioral cases and 40 fixtures validated."
+      },
+      {
+        "id": "unit-tests",
+        "command": "python3 -B -m unittest discover -s tests -v",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:unit-tests",
+        "sanitized_summary": "280 tests passed."
+      },
+      {
+        "id": "git-push-branch",
+        "command": "GIT_SSH_COMMAND='ssh -o IdentitiesOnly=yes -i ~/.ssh/id_ed25519_github' git push -u origin feat/liberal-rework-logging-policy",
+        "capability": "git_remote_change",
+        "approval_gate_ref": "git_remote_change",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:git-push-branch",
+        "sanitized_summary": "Pushed feat/liberal-rework-logging-policy (ada1e21) to origin; branch now tracks origin/feat/liberal-rework-logging-policy."
+      }
+    ],
+    "changed_files": [
+      "AGENTS.md",
+      ".agent-system/runs/2026-10-05_121414-liberal-rework-logging-policy/run.yaml",
+      ".agent-system/runs/2026-10-05_121414-liberal-rework-logging-policy/learning.yaml"
+    ]
+  },
+  "results": {
+    "status": "completed",
+    "tests": [
+      {
+        "name": "source toolkit validation",
+        "status": "passed",
+        "command_ref": "validate-kit",
+        "evidence_ref": "terminal:validate-kit",
+        "sanitized_summary": "Source toolkit valid; no behavioral coverage regressions."
+      },
+      {
+        "name": "complete unit suite",
+        "status": "passed",
+        "command_ref": "unit-tests",
+        "evidence_ref": "terminal:unit-tests",
+        "sanitized_summary": "280 tests passed."
+      }
+    ],
+    "metrics": [],
+    "artifacts": [
+      {
+        "kind": "project-local contract amendment",
+        "ref": "AGENTS.md",
+        "classification": "public"
+      },
+      {
+        "kind": "sibling run record",
+        "ref": ".agent-system/runs/2026-10-05_121414-liberal-rework-logging-policy/run.yaml",
+        "classification": "public"
+      },
+      {
+        "kind": "sibling learning record",
+        "ref": ".agent-system/runs/2026-10-05_121414-liberal-rework-logging-policy/learning.yaml",
+        "classification": "public"
+      }
+    ],
+    "decision": "not_applicable"
+  },
+  "knowledge": {
+    "verified_facts": [
+      "AGENTS.md at the repository root now contains a liberal-rework-logging rule with the trigger list (audit request, REQUIRES_CHANGES verdict, multi-phase plan touching core correctness, >=2 phase categories, dedicated feature branch, user-described significant/rework/harden/productionise/redesign), the sibling-pair file rule (run.yaml + learning.yaml), the schema cross-reference to .agent-system/SYSTEM.md and .agent-system/schemas/{run,learning}.schema.json, and the 'err on the side of logging' line.",
+      "The sibling run/learning records were scaffolded with tooling/create-run.py and conform to run.schema 0.1 and learning.schema 0.4.",
+      "Source validation (python3 -B tooling/validate-kit.py) passes; full unit suite (python3 -B -m unittest discover -s tests -v) passes with 280 tests green.",
+      "The overlay template that ships to downstream consumers (.agent-system/templates/AGENTS.dsml.template.md and dist/project-overlay/AGENTS.dsml.template.md) was deliberately left unchanged; the new rule is project-local to this repository."
+    ],
+    "assumptions": [
+      "Downstream consumers can add an equivalent rule to their own AGENTS.md if they want similar logging; the toolkit core stays harness-neutral and does not bake the rule in.",
+      "Editing AGENTS.md does not constitute modifying 'protected policy' (the kit's SYSTEM.md / CONTROL.md) and therefore does not require the kit's explicit maintenance workflow."
+    ],
+    "remaining_uncertainty": [
+      "Future agent behaviour is verified by re-reading AGENTS.md, not by direct execution; downstream consumers may still need a behavioural eval to confirm the rule fires at the right threshold."
+    ]
+  }
+}
