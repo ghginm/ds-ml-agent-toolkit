@@ -49,7 +49,14 @@
       "Create run/learning records under .agent-system/runs/ via tooling/create-run.py.",
       "Run local deterministic validation and the unit test suite."
     ],
-    "approval_gates": [],
+    "approval_gates": [
+      {
+        "action": "git_remote_change",
+        "status": "approved",
+        "authority": "explicit user chat message: 'push' (followed by 'agent started, push now')",
+        "evidence_ref": "chat:user-push-authorization"
+      }
+    ],
     "authorization_boundary": [
       "No edits to kit-owned files (.agent-system/SYSTEM.md, .agent-system/CONTROL.md, schemas, templates, workflows) from this project-local rule.",
       "No commit, push, or release publication without explicit user authorization."
@@ -130,6 +137,16 @@
         "exit_code": 0,
         "evidence_ref": "terminal:unit-tests",
         "sanitized_summary": "280 tests passed."
+      },
+      {
+        "id": "git-push-branch",
+        "command": "GIT_SSH_COMMAND='ssh -o IdentitiesOnly=yes -i ~/.ssh/id_ed25519_github' git push -u origin feat/liberal-rework-logging-policy",
+        "capability": "git_remote_change",
+        "approval_gate_ref": "git_remote_change",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:git-push-branch",
+        "sanitized_summary": "Pushed feat/liberal-rework-logging-policy (ada1e21) to origin; branch now tracks origin/feat/liberal-rework-logging-policy."
       }
     ],
     "changed_files": [
