@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires local Git, terminal command execution, and a reproducible experiment evaluation command.
 metadata:
   author: "Luis Cantero (upstream), adapted by ghgin and Hermes Agent"
-  version: "0.9.0"
+  version: "0.14.0"
   inspired-by: "https://github.com/karpathy/autoresearch"
 ---
 

@@ -106,6 +106,19 @@ REQUIRED_COVERAGE = {
     "autoresearch_bounded_crash_repair",
     "autoresearch_larger_hypothesis",
     "autoresearch_capability_gate",
+    "git_commit_feat",
+    "git_commit_fix",
+    "git_commit_refactor",
+    "git_commit_docs",
+    "git_no_repository",
+    "git_no_push_authorization",
+    "git_dirty_worktree_protection",
+    "structural_change_large_refactor",
+    "structural_change_small_edit_negative",
+    "structural_hygiene_completion_pass",
+    "structural_docs_churn_negative",
+    "structural_worktree_finalization",
+    "toolkit_upgrade_cross_version",
 }
 REQUIRED_CASE_FIELDS = {
     "id",
@@ -119,10 +132,10 @@ REQUIRED_CASE_FIELDS = {
     "rubric_ids",
     "coverage_tags",
 }
-REQUIRED_ADAPTERS = {
-    "adapters/codex/AGENTS.fragment.md",
-    "adapters/copilot/copilot-instructions.fragment.md",
-    "adapters/hermes/hermes-project.fragment.md",
+REQUIRED_ADAPTER_FILES = {
+    "codex/AGENTS.fragment.md",
+    "copilot/copilot-instructions.fragment.md",
+    "hermes/hermes-project.fragment.md",
 }
 FENCED_CODE_RE = re.compile(r"```.*?```|~~~.*?~~~", re.DOTALL)
 UNFINISHED_MARKERS = (
@@ -222,10 +235,19 @@ REQUIRED_POLICY_ALLOWED_ACTIONS = {"task_scoped_local_git"}
 REQUIRED_ARTIFACT_FORBIDDEN = {"secrets", "raw customer rows", "hidden chain-of-thought"}
 UNSAFE_FIXTURE_PATH_RE = re.compile(r"(^|[\\/])\.\.($|[\\/])|^[A-Za-z]:|^[/\\]")
 TEMPLATE_REQUIRED_SECTIONS = {
+    "DSML_AGENT_KIT.md": [
+        "# DS/ML Agent Kit",
+        "## Quick setup",
+        "Set up the DS/ML Agent Kit for this project.",
+        "## Common usage",
+        ".agent-system/CONTROL.md",
+        "## Git",
+        "## Advanced / internals",
+        "Most users do not need to edit files inside `.agent-system`.",
+    ],
     ".agent-system/CONTROL.md": [
         "# DS/ML Agent Kit — Control",
         "## Start here",
-        "## Setup in three steps",
         "## Workflow controls",
         "Need more detail? See [`SYSTEM.md`](SYSTEM.md).",
     ],
@@ -234,6 +256,8 @@ TEMPLATE_REQUIRED_SECTIONS = {
         "## 5-minute architecture",
         "## Routing precedence",
         "Ordinary work does not require them.",
+        "never a second permanent project",
+        "## Toolkit runtime states",
     ],
     ".agent-system/workflows/technical-report.md": [
         "## Trigger and controls",
@@ -254,11 +278,13 @@ TEMPLATE_REQUIRED_SECTIONS = {
         "validate-dsml-result",
     ],
     ".agent-system/templates/AGENTS.dsml.template.md": [
+        "<!-- DS/ML Agent Kit:BEGIN managed -->",
         "## Agent system",
         "Project-specific guidance is defined in this file.",
         ".agent-system/CONTROL.md",
         ".agent-system/SYSTEM.md",
         ".agent-system/workflows/",
+        "not a second permanent project",
     ],
     ".agent-system/templates/PROJECT_MAP.template.md": [
         "# Project map",
@@ -395,6 +421,19 @@ COVERAGE_CASE_IDS = {
     "autoresearch_bounded_crash_repair": "autoresearch-bounded-crash-repair",
     "autoresearch_larger_hypothesis": "autoresearch-larger-hypothesis-after-incremental-search",
     "autoresearch_capability_gate": "autoresearch-capability-gate",
+    "git_commit_feat": "git-finalize-feature",
+    "git_commit_fix": "git-finalize-bug-fix",
+    "git_commit_refactor": "git-finalize-refactor",
+    "git_commit_docs": "git-finalize-docs",
+    "git_no_repository": "git-finalize-no-repository",
+    "git_no_push_authorization": "git-finalize-no-push-authorization",
+    "git_dirty_worktree_protection": "git-finalize-dirty-unrelated-changes",
+    "structural_change_large_refactor": "structural-refactor-clean-end-state",
+    "structural_change_small_edit_negative": "structural-discipline-normal-feature-negative",
+    "structural_hygiene_completion_pass": "structural-refactor-clean-end-state",
+    "structural_docs_churn_negative": "structural-discipline-normal-feature-negative",
+    "structural_worktree_finalization": "structural-refactor-clean-end-state",
+    "toolkit_upgrade_cross_version": "toolkit-upgrade-cross-version",
 }
 MAX_MAINTAINED_FILE_BYTES = 2_000_000
 IGNORED_DIRECTORY_NAMES = {".git", ".pytest_cache", "_prompts", "node_modules", ".venv", "venv"}
@@ -2877,7 +2916,13 @@ def validate_evals(root: Path) -> list[str]:
 
 def validate_adapters(root: Path) -> list[str]:
     errors: list[str] = []
-    for relative in sorted(REQUIRED_ADAPTERS):
+    adapter_root = (
+        "adapters"
+        if (root / "tooling" / "build-overlay.py").is_file()
+        else ".agent-system/adapters"
+    )
+    for adapter_file in sorted(REQUIRED_ADAPTER_FILES):
+        relative = f"{adapter_root}/{adapter_file}"
         path = root / relative
         if not path.is_file():
             errors.append(f"missing adapter file {relative}")

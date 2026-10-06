@@ -1,0 +1,291 @@
+{
+  "schema_version": "0.1",
+  "task": {
+    "id": "2026-10-06_023318-structural-change-discipline",
+    "mode": "tracked",
+    "goal": "Add a lightweight structural-change discipline for large repository refactors.",
+    "scope": [
+      "Shared runtime agent instructions and system documentation.",
+      "Behavioral evaluation coverage for large structural refactors and ordinary small changes.",
+      "Synchronized 0.12.0 release metadata and generated project overlay."
+    ],
+    "non_goals": [
+      "Create worktrees or staging directories for ordinary feature work.",
+      "Add a structural-refactor workflow, form, or mandatory user confirmation step.",
+      "Implement a second Git helper or a disconnected-copy mechanism.",
+      "Commit or push the implementation without explicit authorization."
+    ],
+    "constraints": [
+      "Keep the policy harness-neutral and concise enough for shared runtime instructions.",
+      "Prefer inferred ecosystem conventions and ask only for consequential ambiguity.",
+      "Use only synthetic evaluation fixtures.",
+      "Preserve unrelated existing working-tree changes."
+    ],
+    "budget": {
+      "compute": "Local stdlib validation and unit tests; no GPU.",
+      "time": "Single implementation session."
+    },
+    "evaluation_plan": [
+      "Write and run a failing contract test before changing released behavior.",
+      "Add a script-heavy positive case and a normal-feature negative-trigger case with authoritative synthetic fixtures.",
+      "Rebuild the project overlay and verify source, overlay, coverage, and distribution synchronization.",
+      "Run the complete unittest suite and diff whitespace checks.",
+      "Obtain an independent review and apply any useful test-strengthening feedback."
+    ],
+    "acceptance": [
+      "Large structural refactors inspect and define the end-state, prefer isolated Git worktrees, resolve legacy paths cleanly, verify parity before removal, and report canonical structure.",
+      "Every legacy component ends migrated and removed, canonical, an explicit compatibility shim, or intentionally deprecated and documented.",
+      "The positive script-heavy case rejects duplicate layouts, abandoned entry points, root clutter, caches, and an unclear canonical execution path.",
+      "Normal small changes do not create worktrees or staging directories.",
+      "Source validation, overlay validation, overlay drift checks, and the full unittest suite pass."
+    ],
+    "expected_outputs": [
+      ".agent-system/templates/AGENTS.dsml.template.md",
+      ".agent-system/SYSTEM.md",
+      "evals/cases/behavioral-cases.json",
+      "evals/fixtures/synthetic-fixtures.json",
+      "tooling/validate-kit.py",
+      "tests/test_validate_kit.py",
+      "VERSION",
+      "dist/project-overlay/",
+      ".agent-system/runs/2026-10-06_023318-structural-change-discipline/run.yaml",
+      ".agent-system/runs/2026-10-06_023318-structural-change-discipline/learning.yaml"
+    ]
+  },
+  "policy": {
+    "policy_ref": ".agent-system/policy/capability-policy.yaml",
+    "data_classification": "public",
+    "allowed_actions": [
+      "Read and edit the authorized source repository.",
+      "Create toolkit-owned run evidence under .agent-system/runs/.",
+      "Run local deterministic build, validation, tests, Git inspection, and independent review."
+    ],
+    "approval_gates": [],
+    "authorization_boundary": [
+      "No commit or push was requested or performed.",
+      "No remote repository write, dependency change, protected-branch action, or external-system mutation was performed."
+    ]
+  },
+  "provenance": {
+    "repository": {
+      "revision": "801e5656d975f38e809028e26397c7076f5f3370",
+      "working_tree": "dirty at task start with pre-existing unrelated changes; task changes remained uncommitted",
+      "diff_ref": "origin/feat/liberal-rework-logging-policy"
+    },
+    "project_map_version": null,
+    "environment": {
+      "host": "WSL"
+    },
+    "inputs": [
+      {
+        "kind": "implementation brief",
+        "ref": "chat:user-request-structural-change-discipline",
+        "classification": "public"
+      }
+    ],
+    "versions": {
+      "toolkit_before": "0.11.0",
+      "toolkit_after": "0.12.0"
+    },
+    "seeds": []
+  },
+  "execution": {
+    "tools": [
+      "tooling/create-run.py",
+      "tooling/build-overlay.py",
+      "tooling/validate-kit.py",
+      "python3 unittest",
+      "git",
+      "independent reviewer subagent"
+    ],
+    "commands": [
+      {
+        "id": "baseline-overlay-check",
+        "command": "python3 -B tooling/build-overlay.py --check",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:baseline-overlay-check",
+        "sanitized_summary": "The checked-in project overlay was current before this task's edits."
+      },
+      {
+        "id": "scaffold-run-record",
+        "command": "python3 -B tooling/create-run.py --project-root /home/ghgin/projects/ds_agents --id 2026-10-06_023318-structural-change-discipline ...",
+        "capability": "sanitized_artifacts",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:scaffold-run-record",
+        "sanitized_summary": "Created sibling run.yaml and learning.yaml records before meaningful implementation work."
+      },
+      {
+        "id": "tdd-red-structural-contract",
+        "command": "python3 -B -m unittest tests.test_validate_kit.ValidateKitTests.test_structural_change_discipline_contract_and_cases -v",
+        "capability": "safe_local_validation",
+        "status": "failed",
+        "exit_code": 1,
+        "evidence_ref": "terminal:tdd-red-structural-contract",
+        "sanitized_summary": "The new contract test failed on the missing 0.12.0 release and structural-change behavior."
+      },
+      {
+        "id": "focused-structural-contract-green",
+        "command": "python3 -B -m unittest tests.test_validate_kit.ValidateKitTests.test_structural_change_discipline_contract_and_cases -v",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:focused-structural-contract-green",
+        "sanitized_summary": "The structural policy and positive/negative behavioral contract test passed after implementation."
+      },
+      {
+        "id": "build-and-contract-validation",
+        "command": "python3 -B tooling/build-overlay.py && python3 -B tooling/validate-kit.py && python3 -B tooling/validate-kit.py --overlay dist/project-overlay && python3 -B -m unittest tests.test_validate_kit.ValidateKitTests.test_structural_change_discipline_contract_and_cases tests.test_validate_kit.ValidateKitTests.test_required_behavioral_coverage_is_complete -v",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:build-and-contract-validation",
+        "sanitized_summary": "Overlay build, source validation, overlay validation, structural contract, and required coverage checks passed for 72 behavioral cases and 46 fixtures."
+      },
+      {
+        "id": "complete-unittest-suite",
+        "command": "python3 -B -m unittest discover -s tests -v",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:complete-unittest-suite",
+        "sanitized_summary": "All 282 unit tests passed."
+      },
+      {
+        "id": "final-diff-inspection",
+        "command": "git diff --check && git status --short && git diff -- <task-relevant-paths>",
+        "capability": "authorized_repository_read",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:final-diff-inspection",
+        "sanitized_summary": "Diff whitespace checks passed; pre-existing unrelated changes remained present and unmodified."
+      },
+      {
+        "type": "operation",
+        "id": "independent-structural-review",
+        "description": "An independent reviewer checked the structural policy, behavioral cases, fixtures, release synchronization, generated overlay, and acceptance criteria without modifying files.",
+        "capability": "evidence_mapping",
+        "status": "succeeded",
+        "exit_code": null,
+        "evidence_ref": "delegation:deleg_0a2d6f87",
+        "sanitized_summary": "Review verdict PASS with no blocking issues; suggested assertions for conditional non-Git staging, all four legacy dispositions, and the small-change staging prohibition were added."
+      },
+      {
+        "id": "post-review-verification",
+        "command": "python3 -B -m unittest tests.test_validate_kit.ValidateKitTests.test_structural_change_discipline_contract_and_cases -v && python3 -B tooling/validate-kit.py && python3 -B tooling/validate-kit.py --overlay dist/project-overlay && python3 -B tooling/build-overlay.py --check && git diff --check",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:post-review-verification",
+        "sanitized_summary": "The strengthened contract test, source and overlay validators, overlay drift check, and diff whitespace check all passed."
+      }
+    ],
+    "changed_files": [
+      ".agent-system/SYSTEM.md",
+      ".agent-system/templates/AGENTS.dsml.template.md",
+      ".agent-system/templates/learning.template.yaml",
+      ".agents/skills/analyze-dsml-project/SKILL.md",
+      ".agents/skills/autoresearch/SKILL.md",
+      ".agents/skills/compose-dsml-report/SKILL.md",
+      ".agents/skills/execute-dsml-task/SKILL.md",
+      ".agents/skills/validate-dsml-result/SKILL.md",
+      "VERSION",
+      "tooling/validate-kit.py",
+      "tests/test_validate_kit.py",
+      "evals/cases/behavioral-cases.json",
+      "evals/fixtures/synthetic-fixtures.json",
+      "dist/project-overlay/.agent-system/SYSTEM.md",
+      "dist/project-overlay/.agent-system/VERSION",
+      "dist/project-overlay/.agent-system/manifest.json",
+      "dist/project-overlay/.agent-system/templates/AGENTS.dsml.template.md",
+      "dist/project-overlay/.agent-system/templates/learning.template.yaml",
+      "dist/project-overlay/.agent-system/tooling/validate-kit.py",
+      "dist/project-overlay/.agents/skills/analyze-dsml-project/SKILL.md",
+      "dist/project-overlay/.agents/skills/autoresearch/SKILL.md",
+      "dist/project-overlay/.agents/skills/compose-dsml-report/SKILL.md",
+      "dist/project-overlay/.agents/skills/execute-dsml-task/SKILL.md",
+      "dist/project-overlay/.agents/skills/validate-dsml-result/SKILL.md",
+      ".agent-system/runs/2026-10-06_023318-structural-change-discipline/run.yaml",
+      ".agent-system/runs/2026-10-06_023318-structural-change-discipline/learning.yaml"
+    ]
+  },
+  "results": {
+    "status": "completed",
+    "tests": [
+      {
+        "name": "structural-change contract test",
+        "status": "passed",
+        "command_ref": "post-review-verification",
+        "sanitized_summary": "The policy, four legacy outcomes, conditional isolation, script-heavy case, and small-change negative case are asserted."
+      },
+      {
+        "name": "source toolkit validation",
+        "status": "passed",
+        "command_ref": "post-review-verification",
+        "sanitized_summary": "Source toolkit valid with 72 behavioral cases and 46 fixtures."
+      },
+      {
+        "name": "generated overlay validation and drift check",
+        "status": "passed",
+        "command_ref": "post-review-verification",
+        "sanitized_summary": "Overlay toolkit-owned files, manifest hashes, and generated source parity are current."
+      },
+      {
+        "name": "complete unittest suite",
+        "status": "passed",
+        "command_ref": "complete-unittest-suite",
+        "sanitized_summary": "All 282 tests passed."
+      }
+    ],
+    "metrics": [],
+    "artifacts": [
+      {
+        "kind": "shared agent instruction",
+        "ref": ".agent-system/templates/AGENTS.dsml.template.md",
+        "classification": "public"
+      },
+      {
+        "kind": "system documentation",
+        "ref": ".agent-system/SYSTEM.md",
+        "classification": "public"
+      },
+      {
+        "kind": "behavioral evaluation cases",
+        "ref": "evals/cases/behavioral-cases.json",
+        "classification": "synthetic"
+      },
+      {
+        "kind": "generated release overlay",
+        "ref": "dist/project-overlay/",
+        "classification": "public"
+      },
+      {
+        "kind": "run evidence",
+        "ref": ".agent-system/runs/2026-10-06_023318-structural-change-discipline/run.yaml",
+        "classification": "public"
+      }
+    ],
+    "decision": "not_applicable"
+  },
+  "knowledge": {
+    "verified_facts": [
+      "Structural Change Discipline triggers only for material layout, package, entry-point, build, migration, or broad architecture changes and explicitly excludes normal feature work.",
+      "The policy requires current-structure inspection, an intended end-state, canonical and legacy path identification, compatibility analysis, migration risk analysis, and duplicate-concept detection before mutation.",
+      "Git-backed large refactors prefer dedicated refactor branches in sibling worktrees; non-Git sibling staging is conditional on real isolation value.",
+      "Behavioral parity precedes replacement or removal, and every legacy component must be removed, canonical, an explicit compatibility shim, or intentionally deprecated and documented.",
+      "The positive script-heavy case rejects duplicate test directories, old and new entry points, abandoned scripts, root clutter, caches, and an unclear canonical command.",
+      "The negative-trigger case keeps a normal validation feature as an ordinary edit and forbids worktrees, staging copies, replacement packages, and new top-level directories.",
+      "Version 0.12.0 is synchronized across VERSION, all five shipped skills, the learning template, generated overlay, and manifest.",
+      "Source validation, overlay validation, focused tests, all 282 tests, overlay drift checks, diff whitespace checks, and independent review passed."
+    ],
+    "assumptions": [
+      "Behavioral cases validate definitions, fixtures, and expected contracts; they do not execute a live agent harness against the prompts.",
+      "A future live structural refactor still needs project-appropriate parity checks rather than a universal parity command."
+    ],
+    "remaining_uncertainty": [
+      "The policy was not exercised by a live behavioral harness in this run; enforcement is instruction- and evaluation-contract-based."
+    ]
+  }
+}

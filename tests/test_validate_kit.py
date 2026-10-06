@@ -69,6 +69,7 @@ class ValidateKitTests(unittest.TestCase):
             json.loads(first_files[".agent-system/manifest.json"])["files"],
         )
         for required in (
+            "DSML_AGENT_KIT.md",
             ".agent-system/VERSION",
             ".agent-system/manifest.json",
             ".agent-system/project.template.yaml",
@@ -97,15 +98,15 @@ class ValidateKitTests(unittest.TestCase):
             ".agent-system/workflows/technical-report.md",
             ".agent-system/workflows/autoresearch.md",
             ".agent-system/workflows/independent-validation.md",
-            "AGENTS.dsml.template.md",
+            ".agent-system/templates/AGENTS.dsml.template.md",
+            ".agent-system/adapters/codex/AGENTS.fragment.md",
+            ".agent-system/adapters/copilot/copilot-instructions.fragment.md",
+            ".agent-system/adapters/hermes/hermes-project.fragment.md",
         ):
             self.assertIn(required, first_files)
-        for root_document in (
-            "DSML_AGENT_KIT.md",
-            "HOW_TO_USE_DSML_AGENT.md",
-            "LEARNING_LOOP.md",
-        ):
+        for root_document in ("AGENTS.dsml.template.md", "HOW_TO_USE_DSML_AGENT.md", "LEARNING_LOOP.md"):
             self.assertNotIn(root_document, first_files)
+        self.assertFalse(any(path.startswith("adapters/") for path in first_files))
         self.assertNotIn("README.md", first_files)
         self.assertFalse(any(path.startswith("evals/") for path in first_files))
         self.assertFalse(any("/.agent-system/runs/" in f"/{path}" for path in first_files))
@@ -114,6 +115,32 @@ class ValidateKitTests(unittest.TestCase):
         self.assertNotIn(".agent-system/policy/capability-policy.yaml", first_files)
         self.assertNotIn(".agent-system/local/request-events.jsonl", first_files)
         self.assertNotIn(".agent-system/local/request-patterns.yaml", first_files)
+
+        visible_root_entries = sorted(
+            {path.split("/", 1)[0] for path in first_files if not path.startswith(".")}
+        )
+        self.assertEqual(["DSML_AGENT_KIT.md"], visible_root_entries)
+        guide = first_files["DSML_AGENT_KIT.md"].decode("utf-8")
+        for required_text in (
+            "# DS/ML Agent Kit",
+            "## Quick setup",
+            "Set up the DS/ML Agent Kit for this project.",
+            "## Common usage",
+            ".agent-system/CONTROL.md",
+            "## Git",
+            "## Advanced / internals",
+            "Most users do not need to edit files inside `.agent-system`.",
+        ):
+            self.assertIn(required_text, guide)
+        for absent_text in (
+            "Analyze this project",
+            "Implement this feature",
+            "Investigate this model issue",
+            "Create a technical PDF report",
+            "Update the project map",
+        ):
+            self.assertNotIn(absent_text, guide)
+        self.assertLessEqual(len(guide.splitlines()), 45)
 
     def test_installed_validation_does_not_create_missing_local_state(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -1127,13 +1154,14 @@ class ValidateKitTests(unittest.TestCase):
         self.assertTrue(any("discovery description lacks" in error for error in errors))
 
     def test_source_validation_rejects_core_version_mismatch(self) -> None:
+        current_version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             shutil.copytree(ROOT / ".agents", root / ".agents")
             shutil.copyfile(ROOT / "VERSION", root / "VERSION")
             path = root / ".agents" / "skills" / "execute-dsml-task" / "SKILL.md"
             text = path.read_text(encoding="utf-8").replace(
-                'version: "0.9.0"', 'version: "0.1.0"', 1
+                f'version: "{current_version}"', 'version: "0.1.0"', 1
             )
             path.write_text(text, encoding="utf-8")
 
@@ -1296,19 +1324,27 @@ class ValidateKitTests(unittest.TestCase):
         self.assertLessEqual(len(control.splitlines()), 180)
         for heading in (
             "## Start here",
-            "## Setup in three steps",
             "## Workflow controls",
             "## Copy/paste examples",
         ):
             self.assertIn(heading, control)
         for operation in (
-            "Set up the DS/ML Agent Kit",
             "Create a technical PDF report",
             "Run autoresearch",
             "Independently validate this result",
             "Fix this data preprocessing bug",
         ):
             self.assertIn(operation, control)
+        self.assertNotIn("Set up this repo", control)
+        self.assertNotIn("Set up the DS/ML Agent Kit", control)
+        self.assertNotIn("## Repair and upgrade", control)
+        self.assertNotIn("Upgrade the DS/ML Agent Kit", control)
+        self.assertNotIn("--repair-runtime", control)
+        self.assertNotIn("--upgrade-from", control)
+        self.assertIn("### Independent validation example", control)
+        self.assertIn("### Ordinary bug-fix example", control)
+        self.assertNotIn("This is a separate follow-up", control)
+        self.assertNotIn("This unrelated example", control)
         self.assertIn("Need more detail? See [`SYSTEM.md`](SYSTEM.md).", control)
         self.assertIn("## Routing precedence", system)
         self.assertIn("Everything else remains normal agent work", system)
@@ -1337,6 +1373,190 @@ class ValidateKitTests(unittest.TestCase):
         self.assertIn("Explicit controls override profile defaults", report_workflow)
         self.assertFalse((ROOT / ".agent-system" / "docs" / "DSML_AGENT_KIT.md").exists())
         self.assertFalse((ROOT / ".agent-system" / "docs" / "HOW_TO_USE_DSML_AGENT.md").exists())
+
+    def test_git_commit_and_finalization_conventions(self) -> None:
+        runtime = (
+            ROOT / ".agent-system" / "templates" / "AGENTS.dsml.template.md"
+        ).read_text(encoding="utf-8")
+        system = (ROOT / ".agent-system" / "SYSTEM.md").read_text(encoding="utf-8")
+        document = json.loads(
+            (ROOT / "evals" / "cases" / "behavioral-cases.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        fixtures_document = json.loads(
+            (ROOT / "evals" / "fixtures" / "synthetic-fixtures.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        cases = {case["id"]: case for case in document["cases"]}
+        fixtures = {fixture["id"]: fixture for fixture in fixtures_document["fixtures"]}
+
+        self.assertEqual("0.14.0", (ROOT / "VERSION").read_text(encoding="utf-8").strip())
+        for text in (runtime, system):
+            self.assertIn("Conventional Commits", text)
+            self.assertIn("feat(scope):", text)
+            self.assertIn("fix(scope):", text)
+            self.assertIn("refactor(scope):", text)
+            self.assertIn("test(scope):", text)
+            self.assertIn("docs(scope):", text)
+            self.assertIn("chore(scope):", text)
+            self.assertIn("one logical change per commit", text)
+            self.assertIn("actual logical change", text)
+            self.assertIn("git_preflight.py", text)
+            self.assertIn("generated, cache, or temporary files", text)
+            self.assertIn("repository-required generated outputs", text)
+            self.assertIn("Push only when", text)
+            self.assertIn("unrelated user changes", text)
+
+        expected = {
+            "git-finalize-feature": ("feat(inference): add batch prediction support", "git_commit_feat"),
+            "git-finalize-bug-fix": ("fix(features): prevent target leakage in lag features", "git_commit_fix"),
+            "git-finalize-refactor": ("refactor(training): separate tuning from final fit", "git_commit_refactor"),
+            "git-finalize-docs": ("docs: update project setup", "git_commit_docs"),
+            "git-finalize-no-repository": ("continue normally without creating a repository", "git_no_repository"),
+            "git-finalize-no-push-authorization": ("must not push", "git_no_push_authorization"),
+            "git-finalize-dirty-unrelated-changes": ("exclude unrelated user changes", "git_dirty_worktree_protection"),
+        }
+        for case_id, (required_text, coverage_tag) in expected.items():
+            case = cases[case_id]
+            serialized = json.dumps(case).lower()
+            self.assertIn(required_text.lower(), serialized)
+            self.assertIn(coverage_tag, case["coverage_tags"])
+
+        self.assertEqual(
+            ["git-non-repository"],
+            cases["git-finalize-no-repository"]["fixture_ids"],
+        )
+        self.assertIn(
+            "fixture://git-non-repository/raw_evidence/0",
+            cases["git-finalize-no-repository"]["raw_evidence_refs"],
+        )
+        self.assertIn(
+            "push",
+            json.dumps(cases["git-finalize-no-push-authorization"]["forbidden_actions"]).lower(),
+        )
+        self.assertIn(
+            "git add -a",
+            json.dumps(cases["git-finalize-dirty-unrelated-changes"]["forbidden_actions"]).lower(),
+        )
+        feature_case = json.dumps(cases["git-finalize-feature"]).lower()
+        self.assertIn("incidental generated/cache/temp", feature_case)
+        self.assertIn("repository-required generated outputs", feature_case)
+
+        semantic_fixtures = {
+            "git-finalize-feature": (
+                "git-feature-missing-batch",
+                "supports only one prediction record",
+            ),
+            "git-finalize-bug-fix": (
+                "git-lag-leakage-bug",
+                "shift(0)",
+            ),
+            "git-finalize-refactor": (
+                "git-training-refactor",
+                "tuning and final fit are coupled",
+            ),
+        }
+        for case_id, (fixture_id, marker) in semantic_fixtures.items():
+            self.assertEqual([fixture_id], cases[case_id]["fixture_ids"])
+            self.assertIn(marker, json.dumps(fixtures[fixture_id]).lower())
+
+    def test_structural_change_discipline_contract_and_cases(self) -> None:
+        runtime = (
+            ROOT / ".agent-system" / "templates" / "AGENTS.dsml.template.md"
+        ).read_text(encoding="utf-8")
+        system = (ROOT / ".agent-system" / "SYSTEM.md").read_text(encoding="utf-8")
+        document = json.loads(
+            (ROOT / "evals" / "cases" / "behavioral-cases.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        fixtures_document = json.loads(
+            (ROOT / "evals" / "fixtures" / "synthetic-fixtures.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        cases = {case["id"]: case for case in document["cases"]}
+        fixtures = {fixture["id"]: fixture for fixture in fixtures_document["fixtures"]}
+
+        self.assertEqual("0.14.0", (ROOT / "VERSION").read_text(encoding="utf-8").strip())
+        for text in (runtime, system):
+            self.assertIn("Structural Change Discipline", text)
+            self.assertIn("canonical new paths", text)
+            self.assertIn("legacy paths", text)
+            self.assertIn("compatibility", text)
+            self.assertIn("behavioral parity", text)
+            self.assertIn("Git worktree", text)
+            self.assertIn("normal feature", text)
+            self.assertIn("migrated and removed", text)
+            self.assertIn("retained as canonical", text)
+            self.assertIn("compatibility shim", text)
+            self.assertIn("deprecated and documented", text)
+            self.assertIn("non-Git", text)
+            self.assertIn("only when isolation", text)
+            self.assertIn("temporary execution and review isolation", text)
+            self.assertIn("both appear canonical", text)
+
+        self.assertIn("<!-- DS/ML Agent Kit:BEGIN managed -->", runtime)
+        self.assertIn("<!-- DS/ML Agent Kit:END managed -->", runtime)
+
+        refactor_case = cases["structural-refactor-clean-end-state"]
+        self.assertEqual(["structural-script-heavy-project"], refactor_case["fixture_ids"])
+        self.assertIn("structural_change_large_refactor", refactor_case["coverage_tags"])
+        self.assertIn("structural_worktree_finalization", refactor_case["coverage_tags"])
+        serialized_refactor = json.dumps(refactor_case).lower()
+        for marker in (
+            "intended end-state",
+            "isolated git worktree",
+            "duplicate test directories",
+            "canonical execution path",
+            "legacy paths",
+            "parity",
+            "repository-level completion pass",
+            "project_map.md",
+            "compatibility shim",
+            ".gitignore",
+            "name the branch",
+            "temporary worktree",
+            "canonical branch",
+            "never silently merge or delete",
+        ):
+            self.assertIn(marker, serialized_refactor)
+        fixture_text = json.dumps(fixtures["structural-script-heavy-project"]).lower()
+        self.assertIn("training.py", fixture_text)
+        self.assertIn("test/test_training.py", fixture_text)
+        self.assertIn("git worktree is practical", fixture_text)
+        self.assertIn("external scheduler", fixture_text)
+        self.assertIn("__pycache__", fixture_text)
+        self.assertIn("debug-forecast-output.json", fixture_text)
+        self.assertIn("stale map", fixture_text)
+
+        for text in (runtime, system):
+            self.assertIn("repository-level", text)
+            self.assertIn("duplicate concepts", text)
+            self.assertIn("root-level", text)
+            self.assertIn(".gitignore", text)
+            self.assertIn("PROJECT_MAP.md", text)
+            self.assertIn("major directories", text)
+            self.assertIn("core entry points", text)
+            self.assertIn("trivial edits", text)
+            self.assertIn("AGENTS.md", text)
+            self.assertIn("change log", text)
+
+        small_case = cases["structural-discipline-normal-feature-negative"]
+        self.assertEqual(["structural-normal-feature-project"], small_case["fixture_ids"])
+        self.assertIn("structural_change_small_edit_negative", small_case["coverage_tags"])
+        serialized_small = json.dumps(small_case).lower()
+        self.assertIn("ordinary edit", serialized_small)
+        self.assertIn("must not create a worktree", serialized_small)
+        self.assertIn("staging directories", serialized_small)
+        self.assertIn("do not churn project_map.md", serialized_small)
+        self.assertIn("trivial edit", serialized_small)
+        small_fixture = json.dumps(fixtures["structural-normal-feature-project"]).lower()
+        self.assertIn("current map", small_fixture)
+        self.assertIn("commands remain accurate", small_fixture)
+        self.assertIn("durable project guidance remains unchanged", small_fixture)
 
 
     def test_autoresearch_preflight_confirmation_contract_and_cases(self) -> None:
@@ -1902,15 +2122,16 @@ class ValidateKitTests(unittest.TestCase):
         self.assertTrue(any("unsafe repository path '.'" in error for error in errors))
 
     def test_skill_metadata_must_be_frontmatter_mapping(self) -> None:
+        current_version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             shutil.copytree(ROOT / ".agents", root / ".agents")
             path = root / ".agents" / "skills" / "analyze-dsml-project" / "SKILL.md"
             text = path.read_text(encoding="utf-8").replace(
-                'metadata:\n  author: "ghgin, Hermes Agent"\n  version: "0.9.0"',
+                f'metadata:\n  author: "ghgin, Hermes Agent"\n  version: "{current_version}"',
                 "metadata: definitely-not-a-mapping",
             )
-            text += '\n  author: "ghgin, Hermes Agent"\n  version: "0.9.0"\n'
+            text += f'\n  author: "ghgin, Hermes Agent"\n  version: "{current_version}"\n'
             path.write_text(text, encoding="utf-8")
             errors = validate_kit.validate_skills(root)
         self.assertTrue(any("metadata must be a frontmatter mapping" in error for error in errors))

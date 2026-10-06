@@ -1,0 +1,258 @@
+{
+  "schema_version": "0.1",
+  "task": {
+    "id": "2026-10-06_214711-git-finalization-conventions",
+    "mode": "tracked",
+    "goal": "Add small shared Git commit and finalization conventions for DS/ML Agent Kit projects while preserving existing authorization and Git preflight behavior.",
+    "scope": [
+      "Shared runtime agent instructions and system documentation.",
+      "Behavioral evaluation coverage for commit classification and safe finalization.",
+      "Synchronized 0.10.0 release metadata and generated project overlay."
+    ],
+    "non_goals": [
+      "Create a second Git implementation or a mandatory interactive commit workflow.",
+      "Force Git initialization or use in non-Git projects.",
+      "Change commit or push authorization rules.",
+      "Commit or push this implementation without explicit authorization."
+    ],
+    "constraints": [
+      "Reuse tooling/git_preflight.py for upstream-state inspection.",
+      "Keep the policy concise and harness-neutral.",
+      "Preserve unrelated user work and repository-required generated release outputs.",
+      "Use only synthetic evaluation fixtures."
+    ],
+    "budget": {
+      "compute": "Local stdlib validation and unit tests; no GPU.",
+      "time": "Single implementation session."
+    },
+    "evaluation_plan": [
+      "Write a failing contract test before changing released behavior.",
+      "Add seven behavioral cases covering feature, fix, refactor, docs, non-Git operation, no unauthorized push, and dirty-worktree protection.",
+      "Rebuild the project overlay and verify deterministic distribution synchronization.",
+      "Run source validation, overlay validation, focused Git tests, and the complete unittest suite.",
+      "Inspect the final Git status/diff and obtain independent review."
+    ],
+    "acceptance": [
+      "Agent instructions default authorized commits to Conventional Commits with useful optional scopes and logical change descriptions.",
+      "Requested commit or push finalization inspects status and relevant diff, reuses git_preflight, runs lightweight validation, avoids accidental incidental artifacts, retains repository-required generated outputs, and pushes only with authorization.",
+      "Behavioral coverage demonstrates feat, fix, refactor, docs, non-Git operation, no unauthorized push, and protection of unrelated dirty user changes.",
+      "Source validation, overlay validation, and the full unittest suite pass."
+    ],
+    "expected_outputs": [
+      ".agent-system/templates/AGENTS.dsml.template.md",
+      ".agent-system/SYSTEM.md",
+      "evals/cases/behavioral-cases.json",
+      "evals/fixtures/synthetic-fixtures.json",
+      "tests/test_validate_kit.py",
+      "dist/project-overlay/",
+      ".agent-system/runs/2026-10-06_214711-git-finalization-conventions/run.yaml",
+      ".agent-system/runs/2026-10-06_214711-git-finalization-conventions/learning.yaml"
+    ]
+  },
+  "policy": {
+    "policy_ref": ".agent-system/policy/capability-policy.yaml",
+    "data_classification": "public",
+    "allowed_actions": [
+      "Read and edit the authorized source repository.",
+      "Create toolkit-owned run evidence under .agent-system/runs/.",
+      "Run local deterministic build, validation, tests, Git inspection, and independent review."
+    ],
+    "approval_gates": [],
+    "authorization_boundary": [
+      "No commit or push was requested or performed.",
+      "No remote repository write, protected-branch action, dependency change, or external-system mutation."
+    ]
+  },
+  "provenance": {
+    "repository": {
+      "revision": "801e5656d975f38e809028e26397c7076f5f3370",
+      "working_tree": "clean at task start; dirty only with task-owned changes at finalization",
+      "diff_ref": "origin/feat/liberal-rework-logging-policy"
+    },
+    "project_map_version": null,
+    "environment": {
+      "host": "WSL",
+      "python": "3.14.7"
+    },
+    "inputs": [
+      {
+        "kind": "implementation brief",
+        "ref": "chat:user-request-git-finalization-conventions",
+        "classification": "public"
+      }
+    ],
+    "versions": {
+      "toolkit_before": "0.9.0",
+      "toolkit_after": "0.10.0"
+    },
+    "seeds": []
+  },
+  "execution": {
+    "tools": [
+      "tooling/create-run.py",
+      "tooling/build-overlay.py",
+      "tooling/validate-kit.py",
+      "python3 unittest",
+      "git",
+      "independent reviewer subagent"
+    ],
+    "commands": [
+      {
+        "id": "scaffold-run-record",
+        "command": "python3 -B tooling/create-run.py --project-root . --id 2026-10-06_214711-git-finalization-conventions ...",
+        "capability": "sanitized_artifacts",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:scaffold-run-record",
+        "sanitized_summary": "Created sibling run.yaml and learning.yaml records before meaningful implementation work."
+      },
+      {
+        "id": "tdd-red-contract-test",
+        "command": "python3 -B -m unittest tests.test_validate_kit.ValidateKitTests.test_git_commit_and_finalization_conventions -v",
+        "capability": "safe_local_validation",
+        "status": "failed",
+        "exit_code": 1,
+        "evidence_ref": "terminal:tdd-red-contract-test",
+        "sanitized_summary": "The new test failed because version 0.10.0 and Git finalization policy/cases were not yet implemented."
+      },
+      {
+        "id": "focused-git-contract-tests",
+        "command": "python3 -B -m unittest tests.test_validate_kit.ValidateKitTests.test_git_commit_and_finalization_conventions tests.test_git_preflight -v",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:focused-git-contract-tests",
+        "sanitized_summary": "The Git finalization contract and all 16 git_preflight tests passed."
+      },
+      {
+        "id": "build-and-full-validation",
+        "command": "python3 -B tooling/build-overlay.py && python3 -B tooling/validate-kit.py --source && python3 -B tooling/validate-kit.py --overlay dist/project-overlay && python3 -B -m unittest discover -s tests -v",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:build-and-full-validation",
+        "sanitized_summary": "Overlay build, source validation, overlay validation, and all 281 unit tests passed; 70 behavioral cases and 44 fixtures validated as definitions and expected contracts."
+      },
+      {
+        "id": "final-diff-inspection",
+        "command": "git status --short --branch && git diff --name-only && git diff --check",
+        "capability": "authorized_repository_read",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:final-diff-inspection",
+        "sanitized_summary": "The worktree contains only task implementation, generated overlay, tests/evals, version metadata, and run evidence; diff whitespace checks passed."
+      },
+      {
+        "type": "operation",
+        "id": "independent-review-and-repair",
+        "description": "Independent reviewers inspected the uncommitted diff in three passes, found policy/eval ambiguity, weak or contradictory fixture evidence, and unfinished run metadata; every finding was repaired and revalidated.",
+        "capability": "evidence_mapping",
+        "status": "succeeded",
+        "exit_code": null,
+        "evidence_ref": "delegation:deleg_1c365401,deleg_b73f3ae9,deleg_fbec1b71",
+        "sanitized_summary": "No security issue was found; seven blocking semantic or evidence findings across three reviews were corrected before final verification."
+      }
+    ],
+    "changed_files": [
+      ".agent-system/SYSTEM.md",
+      ".agent-system/templates/AGENTS.dsml.template.md",
+      ".agent-system/templates/learning.template.yaml",
+      ".agents/skills/analyze-dsml-project/SKILL.md",
+      ".agents/skills/autoresearch/SKILL.md",
+      ".agents/skills/compose-dsml-report/SKILL.md",
+      ".agents/skills/execute-dsml-task/SKILL.md",
+      ".agents/skills/validate-dsml-result/SKILL.md",
+      "README.md",
+      "VERSION",
+      "tooling/validate-kit.py",
+      "tests/test_validate_kit.py",
+      "evals/cases/behavioral-cases.json",
+      "evals/fixtures/synthetic-fixtures.json",
+      "dist/project-overlay/.agent-system/SYSTEM.md",
+      "dist/project-overlay/.agent-system/VERSION",
+      "dist/project-overlay/.agent-system/manifest.json",
+      "dist/project-overlay/.agent-system/templates/learning.template.yaml",
+      "dist/project-overlay/.agent-system/tooling/validate-kit.py",
+      "dist/project-overlay/.agents/skills/analyze-dsml-project/SKILL.md",
+      "dist/project-overlay/.agents/skills/autoresearch/SKILL.md",
+      "dist/project-overlay/.agents/skills/compose-dsml-report/SKILL.md",
+      "dist/project-overlay/.agents/skills/execute-dsml-task/SKILL.md",
+      "dist/project-overlay/.agents/skills/validate-dsml-result/SKILL.md",
+      "dist/project-overlay/AGENTS.dsml.template.md",
+      ".agent-system/runs/2026-10-06_214711-git-finalization-conventions/run.yaml",
+      ".agent-system/runs/2026-10-06_214711-git-finalization-conventions/learning.yaml"
+    ]
+  },
+  "results": {
+    "status": "completed",
+    "tests": [
+      {
+        "name": "focused Git finalization and preflight tests",
+        "status": "passed",
+        "command_ref": "focused-git-contract-tests",
+        "sanitized_summary": "17 focused tests passed."
+      },
+      {
+        "name": "source toolkit validation",
+        "status": "passed",
+        "command_ref": "build-and-full-validation",
+        "sanitized_summary": "Source toolkit valid with 70 behavioral cases and 44 fixtures."
+      },
+      {
+        "name": "generated overlay validation",
+        "status": "passed",
+        "command_ref": "build-and-full-validation",
+        "sanitized_summary": "Overlay toolkit-owned files and manifest are valid."
+      },
+      {
+        "name": "complete unittest suite",
+        "status": "passed",
+        "command_ref": "build-and-full-validation",
+        "sanitized_summary": "All 281 tests passed."
+      }
+    ],
+    "metrics": [],
+    "artifacts": [
+      {
+        "kind": "shared agent instruction",
+        "ref": ".agent-system/templates/AGENTS.dsml.template.md",
+        "classification": "public"
+      },
+      {
+        "kind": "behavioral evaluation cases",
+        "ref": "evals/cases/behavioral-cases.json",
+        "classification": "synthetic"
+      },
+      {
+        "kind": "generated release overlay",
+        "ref": "dist/project-overlay/",
+        "classification": "public"
+      },
+      {
+        "kind": "run evidence",
+        "ref": ".agent-system/runs/2026-10-06_214711-git-finalization-conventions/run.yaml",
+        "classification": "public"
+      }
+    ],
+    "decision": "not_applicable"
+  },
+  "knowledge": {
+    "verified_facts": [
+      "Authorized commits now default to Conventional Commits with optional useful scopes and subjects describing the actual logical change.",
+      "The finalization instruction requires status/diff inspection, shared git_preflight reuse, proportionate validation, selective staging, preservation of unrelated user work, and separate push authorization.",
+      "The artifact rule distinguishes accidental incidental generated/cache/temp files from repository-required generated outputs such as the tracked project overlay.",
+      "Seven synthetic behavioral cases cover feat, fix, refactor, docs, explicit non-Git operation, no unauthorized push, and dirty-worktree protection.",
+      "Dedicated feature, lag-leakage, and training-refactor fixtures provide evidence that directly supports the requested feat, fix, and refactor classifications.",
+      "The behavioral feature case mirrors the runtime distinction between incidental generated artifacts and repository-required generated outputs.",
+      "Version 0.10.0 is synchronized across VERSION, all five shipped skill metadata blocks, the learning template, generated overlay, and manifest.",
+      "Source validation, overlay validation, focused tests, full tests, overlay drift check, and diff whitespace checks pass."
+    ],
+    "assumptions": [
+      "Behavioral cases validate definitions and expected contracts; they do not execute a live agent harness.",
+      "Repository-level instructions remain the authority for which generated outputs are intentionally tracked."
+    ],
+    "remaining_uncertainty": [
+      "No commit or push was requested, so the new commit-message selection and authorization behavior was not exercised through a real repository write in this run."
+    ]
+  }
+}

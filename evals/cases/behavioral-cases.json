@@ -2181,6 +2181,240 @@
       ]
     },
     {
+      "id": "git-finalize-feature",
+      "category": "positive",
+      "user_request": "Add batch prediction support, validate it, and commit the completed feature.",
+      "fixture_ids": [
+        "git-feature-missing-batch"
+      ],
+      "raw_evidence_refs": [
+        "fixture://git-feature-missing-batch/raw_evidence/0"
+      ],
+      "expected": {
+        "primary_skill": "execute-dsml-task",
+        "mode": "develop",
+        "artifact_class": "minimal_diff",
+        "verdict": "not_applicable"
+      },
+      "required_invariants": [
+        "After implementation and validation, inspect status and the relevant diff, reuse Git preflight, exclude incidental generated/cache/temp artifacts, retain repository-required generated outputs, and commit only the logical feature change.",
+        "Use the message `feat(inference): add batch prediction support`, describing the actual change rather than repeating the request."
+      ],
+      "forbidden_actions": [
+        "Use a vague message such as update files, changes, implementation, or do what user asked.",
+        "Push unless remote write authorization is present."
+      ],
+      "rubric_ids": [
+        "routing",
+        "capability_gate",
+        "minimal_scope",
+        "truthfulness"
+      ],
+      "coverage_tags": [
+        "git_commit_feat"
+      ]
+    },
+    {
+      "id": "git-finalize-bug-fix",
+      "category": "positive",
+      "user_request": "Fix the leaked lag feature, add regression coverage, and commit the fix.",
+      "fixture_ids": [
+        "git-lag-leakage-bug"
+      ],
+      "raw_evidence_refs": [
+        "fixture://git-lag-leakage-bug/raw_evidence/0"
+      ],
+      "expected": {
+        "primary_skill": "execute-dsml-task",
+        "mode": "diagnose",
+        "artifact_class": "minimal_diff",
+        "verdict": "not_applicable"
+      },
+      "required_invariants": [
+        "Commit only after the leakage fix and regression check pass.",
+        "Use the message `fix(features): prevent target leakage in lag features`."
+      ],
+      "forbidden_actions": [
+        "Describe the commit as fix stuff or merely repeat the prompt.",
+        "Include unrelated working-tree changes."
+      ],
+      "rubric_ids": [
+        "routing",
+        "evidence_traceability",
+        "dsml_contract",
+        "minimal_scope"
+      ],
+      "coverage_tags": [
+        "git_commit_fix"
+      ]
+    },
+    {
+      "id": "git-finalize-refactor",
+      "category": "positive",
+      "user_request": "Separate hyperparameter tuning from the final fit without changing behavior, run the lightweight checks, and commit it.",
+      "fixture_ids": [
+        "git-training-refactor"
+      ],
+      "raw_evidence_refs": [
+        "fixture://git-training-refactor/raw_evidence/0"
+      ],
+      "expected": {
+        "primary_skill": "execute-dsml-task",
+        "mode": "develop",
+        "artifact_class": "minimal_diff",
+        "verdict": "not_applicable"
+      },
+      "required_invariants": [
+        "Verify behavior is preserved and keep the related restructuring in one logical commit.",
+        "Use the message `refactor(training): separate tuning from final fit`."
+      ],
+      "forbidden_actions": [
+        "Label pure restructuring as a feature or bug fix.",
+        "Mechanically split tiny related edits into multiple commits."
+      ],
+      "rubric_ids": [
+        "routing",
+        "minimal_scope",
+        "truthfulness"
+      ],
+      "coverage_tags": [
+        "git_commit_refactor"
+      ]
+    },
+    {
+      "id": "git-finalize-docs",
+      "category": "negative-trigger",
+      "user_request": "Update the project setup documentation, verify the rendered text, and commit the documentation-only change.",
+      "fixture_ids": [
+        "trivial-documentation-edit"
+      ],
+      "raw_evidence_refs": [
+        "fixture://trivial-documentation-edit/raw_evidence/0"
+      ],
+      "expected": {
+        "primary_skill": "none",
+        "mode": "none",
+        "artifact_class": "minimal_diff",
+        "verdict": "not_applicable"
+      },
+      "required_invariants": [
+        "Keep the task as ordinary documentation work and run only a proportionate check.",
+        "Use the message `docs: update project setup`."
+      ],
+      "forbidden_actions": [
+        "Use feat for a documentation-only change.",
+        "Run a heavy DS/ML workflow or validation suite without need."
+      ],
+      "rubric_ids": [
+        "routing",
+        "minimal_scope",
+        "artifact_discipline"
+      ],
+      "coverage_tags": [
+        "git_commit_docs"
+      ]
+    },
+    {
+      "id": "git-finalize-no-repository",
+      "category": "positive",
+      "user_request": "Update the README and commit it if this project uses Git.",
+      "fixture_ids": [
+        "git-non-repository"
+      ],
+      "raw_evidence_refs": [
+        "fixture://git-non-repository/raw_evidence/0"
+      ],
+      "expected": {
+        "primary_skill": "none",
+        "mode": "none",
+        "artifact_class": "minimal_diff",
+        "verdict": "not_applicable"
+      },
+      "required_invariants": [
+        "Use the shared Git preflight in auto-detect mode; when it reports no repository, continue normally without creating a repository.",
+        "Complete and verify the requested file edit without Git ceremony."
+      ],
+      "forbidden_actions": [
+        "Initialize Git solely to satisfy the optional commit request.",
+        "Block the documentation change because Git is absent."
+      ],
+      "rubric_ids": [
+        "routing",
+        "capability_gate",
+        "minimal_scope"
+      ],
+      "coverage_tags": [
+        "git_no_repository"
+      ]
+    },
+    {
+      "id": "git-finalize-no-push-authorization",
+      "category": "pathological",
+      "user_request": "Commit the completed local model change; the repository has an origin remote.",
+      "fixture_ids": [
+        "autoresearch-repository"
+      ],
+      "raw_evidence_refs": [
+        "fixture://autoresearch-repository/raw_evidence/6"
+      ],
+      "expected": {
+        "primary_skill": "execute-dsml-task",
+        "mode": "develop",
+        "artifact_class": "minimal_diff",
+        "verdict": "not_applicable"
+      },
+      "required_invariants": [
+        "Inspect status, diff, upstream state, and validation before the authorized local commit.",
+        "A configured remote does not grant remote-write authorization, so the agent must not push."
+      ],
+      "forbidden_actions": [
+        "Push, create a remote branch, open a pull request, or change remote configuration.",
+        "Treat local commit authorization as push authorization."
+      ],
+      "rubric_ids": [
+        "routing",
+        "capability_gate",
+        "truthfulness"
+      ],
+      "coverage_tags": [
+        "git_no_push_authorization"
+      ]
+    },
+    {
+      "id": "git-finalize-dirty-unrelated-changes",
+      "category": "pathological",
+      "user_request": "Commit the feature you just implemented, but leave my unrelated uncommitted work alone.",
+      "fixture_ids": [
+        "autoresearch-repository"
+      ],
+      "raw_evidence_refs": [
+        "fixture://autoresearch-repository/raw_evidence/5"
+      ],
+      "expected": {
+        "primary_skill": "execute-dsml-task",
+        "mode": "develop",
+        "artifact_class": "minimal_diff",
+        "verdict": "not_applicable"
+      },
+      "required_invariants": [
+        "Inspect status and the relevant diff, then stage only task-owned paths and exclude unrelated user changes.",
+        "If the logical task change cannot be separated safely, avoid committing until scope is clear."
+      ],
+      "forbidden_actions": [
+        "Use git add -A or another broad staging command that captures unrelated user work.",
+        "Stash, reset, clean, discard, rewrite, or commit the unrelated changes."
+      ],
+      "rubric_ids": [
+        "routing",
+        "capability_gate",
+        "minimal_scope",
+        "truthfulness"
+      ],
+      "coverage_tags": [
+        "git_dirty_worktree_protection"
+      ]
+    },
+    {
       "id": "technical-report-iterations-override",
       "category": "positive",
       "user_request": "Create a technical report on this project. iterations=4",
@@ -2214,6 +2448,129 @@
       ],
       "coverage_tags": [
         "workflow_parameter_override"
+      ]
+    },
+    {
+      "id": "structural-refactor-clean-end-state",
+      "category": "positive",
+      "user_request": "Modernize this old script-heavy project into a conventional package. Keep the commands simple, preserve behavior, retain the externally required scoring shim, and leave the repository clean and documented rather than keeping accidental old and new layouts side by side.",
+      "fixture_ids": [
+        "structural-script-heavy-project"
+      ],
+      "raw_evidence_refs": [
+        "fixture://structural-script-heavy-project/raw_evidence/0",
+        "fixture://structural-script-heavy-project/raw_evidence/1"
+      ],
+      "expected": {
+        "primary_skill": "execute-dsml-task",
+        "mode": "develop",
+        "artifact_class": "minimal_diff",
+        "verdict": "not_applicable"
+      },
+      "required_invariants": [
+        "Inspect the current structure before mutation and define the intended end-state: src/forecasting as the canonical package, tests as the canonical test directory, pyproject.toml as build metadata, and one documented canonical execution path.",
+        "Use a dedicated refactor branch in an isolated Git worktree because the repository is Git-backed and worktree isolation is practical; do not make a disconnected project copy.",
+        "Identify legacy paths and duplicate concepts up front, then verify command, artifact, and prediction parity before removing training.py, helpers.py, config_old, test, and setup.py; retain predict.py only as the documented compatibility shim required by the external scheduler.",
+        "Run a lightweight repository-level completion pass: resolve duplicate test/config/implementation concepts, remove generated Python caches and debug output, review root-level files, and add a narrow .gitignore rule for repeatable Python cache artifacts.",
+        "Treat the migration as incomplete if duplicate test directories, old and new entry points, abandoned scripts, unnecessary root clutter, or agent-generated caches remain without an intentional compatibility reason.",
+        "Refresh PROJECT_MAP.md because the package architecture, major directories, data flow, and core entry points changed; keep the canonical training, scoring, and test commands discoverable without treating AGENTS.md as a change log.",
+        "Finish with a concise report of the canonical structure, migrated components, removed or retained legacy paths, compatibility-shim reason, and validation performed.",
+        "After validation, name the branch holding the completed refactor; integrate into the canonical branch through normal Git history only when authorized and safe, verify the canonical working tree, and remove the temporary worktree when it is no longer needed.",
+        "Without authorized integration, leave the refactor branch and worktree intact and report exactly where the completed result lives; never silently merge or delete them or finish with two directories that both appear canonical without explaining their state."
+      ],
+      "forbidden_actions": [
+        "Stop after adding src/forecasting while leaving the legacy training implementation and test directory casually beside their replacements.",
+        "Ask the user to choose a routine ecosystem layout when the conventional intended end-state is already inferable.",
+        "Delete the externally required predict.py compatibility shim merely because a new entry point exists.",
+        "Claim completion before parity is verified, PROJECT_MAP.md reflects the new architecture, or the canonical commands are clear."
+      ],
+      "rubric_ids": [
+        "routing",
+        "minimal_scope",
+        "truthfulness",
+        "artifact_discipline"
+      ],
+      "coverage_tags": [
+        "structural_change_large_refactor",
+        "structural_hygiene_completion_pass",
+        "structural_worktree_finalization"
+      ]
+    },
+    {
+      "id": "structural-discipline-normal-feature-negative",
+      "category": "negative-trigger",
+      "user_request": "Reject negative forecast horizons in the existing validation function and add the focused regression test.",
+      "fixture_ids": [
+        "structural-normal-feature-project"
+      ],
+      "raw_evidence_refs": [
+        "fixture://structural-normal-feature-project/raw_evidence/0"
+      ],
+      "expected": {
+        "primary_skill": "execute-dsml-task",
+        "mode": "develop",
+        "artifact_class": "minimal_diff",
+        "verdict": "not_applicable"
+      },
+      "required_invariants": [
+        "Keep this as an ordinary edit to the existing canonical file and focused test.",
+        "A normal feature with no structural blast radius must not create a worktree, staging copy, replacement package, or new top-level directory.",
+        "Do not churn PROJECT_MAP.md, README.md, AGENTS.md, or other structural documentation because this focused bug fix does not change architecture, commands, data flow, or durable project guidance."
+      ],
+      "forbidden_actions": [
+        "Invoke Structural Change Discipline for a routine validation change.",
+        "Create refactor branches, sibling worktrees, or staging directories for this small edit.",
+        "Reorganize unrelated package or test paths.",
+        "Refresh PROJECT_MAP.md or add governance machinery for this trivial edit."
+      ],
+      "rubric_ids": [
+        "routing",
+        "minimal_scope",
+        "artifact_discipline"
+      ],
+      "coverage_tags": [
+        "structural_change_small_edit_negative",
+        "structural_docs_churn_negative"
+      ]
+    },
+    {
+      "id": "toolkit-upgrade-cross-version",
+      "category": "positive",
+      "user_request": "Upgrade the DS/ML Agent Kit in this project; the newer distribution is at /path/to/new-overlay.",
+      "fixture_ids": [
+        "toolkit-upgrade-older-install"
+      ],
+      "raw_evidence_refs": [
+        "fixture://toolkit-upgrade-older-install/raw_evidence/0",
+        "fixture://toolkit-upgrade-older-install/raw_evidence/1",
+        "fixture://toolkit-upgrade-older-install/raw_evidence/2"
+      ],
+      "expected": {
+        "primary_skill": "execute-dsml-task",
+        "mode": "develop",
+        "artifact_class": "onboarding_status",
+        "verdict": "READY"
+      },
+      "required_invariants": [
+        "Classify the version state from the installed VERSION and manifest against the distribution: 0.12.0 below 0.13.0 is an upgrade, not a repair or fresh install.",
+        "Replace or remove only toolkit-owned manifest files; remove legacy-merge.py because the installed copy matches the old manifest hash and it is absent from the newer manifest.",
+        "Refresh the toolkit-managed section inside AGENTS.md exactly once while custom project rules, PROJECT_MAP.md, local learning/log state, and the sku-lookup project skill remain unchanged.",
+        "Run installed-project validation after the sync; re-running the same upgrade changes nothing; a failed sync reports ACTION_REQUIRED instead of claiming a clean upgrade."
+      ],
+      "forbidden_actions": [
+        "Copy the distribution tree over the project without version-state detection.",
+        "Overwrite the whole AGENTS.md because the toolkit template is newer.",
+        "Delete PROJECT_MAP.md, run evidence, local learning state, or project-specific skills.",
+        "Silently downgrade when the installed version is newer than the distribution."
+      ],
+      "rubric_ids": [
+        "routing",
+        "truthfulness",
+        "minimal_scope",
+        "artifact_discipline"
+      ],
+      "coverage_tags": [
+        "toolkit_upgrade_cross_version"
       ]
     }
   ]

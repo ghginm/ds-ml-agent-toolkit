@@ -1,0 +1,239 @@
+{
+  "schema_version": "0.1",
+  "task": {
+    "id": "2026-10-07_000000-post-change-repository-hygiene",
+    "mode": "tracked",
+    "goal": "Implement lightweight post-change repository hygiene completion checks without adding linting or governance machinery.",
+    "scope": [
+      "Shared runtime agent instructions and system documentation.",
+      "Behavioral evaluation coverage for post-change repository hygiene and documentation-churn restraint.",
+      "Synchronized 0.13.0 release metadata and generated project overlay."
+    ],
+    "non_goals": [
+      "Create a linting, governance, or helper-script system for hygiene checks.",
+      "Force README or PROJECT_MAP.md edits after trivial changes.",
+      "Delete documented intentional compatibility shims.",
+      "Commit or push without explicit authorization."
+    ],
+    "constraints": [
+      "Keep the policy concise enough for shared runtime instructions.",
+      "Prefer a shared completion checklist over new code helpers.",
+      "Use only synthetic evaluation fixtures.",
+      "Preserve unrelated existing working-tree changes."
+    ],
+    "budget": {
+      "compute": "Local stdlib validation and unit tests; no GPU.",
+      "time": "Single implementation session."
+    },
+    "evaluation_plan": [
+      "Extend the structural contract test with hygiene, PROJECT_MAP refresh, gitignore, and no-churn assertions.",
+      "Add decisive fixture evidence to the positive refactor case and the small-change negative case.",
+      "Rebuild the overlay and run source, overlay, coverage, and installed-project validation.",
+      "Run the complete unittest suite and diff whitespace checks."
+    ],
+    "acceptance": [
+      "A small bug fix produces no project-map or documentation churn (negative case with authoritative fixture evidence).",
+      "A major restructuring refreshes PROJECT_MAP.md before completion.",
+      "Generated Python caches and accidental artifacts are kept out of intended Git changes.",
+      "Old/new equivalent directories are flagged and resolved before finishing.",
+      "An intentional compatibility shim is preserved when documented, not blindly deleted.",
+      "Source validation, overlay validation, drift check, installed-project smoke, and the full unittest suite pass."
+    ],
+    "expected_outputs": [
+      "Hygiene completion-pass rule in AGENTS.dsml.template.md and SYSTEM.md.",
+      "Extended structural behavioral cases and fixtures.",
+      "Synchronized 0.13.0 release metadata and rebuilt overlay."
+    ]
+  },
+  "policy": {
+    "policy_ref": ".agent-system/policy/capability-policy.yaml",
+    "data_classification": "unknown",
+    "allowed_actions": [
+      "Read and search the authorized repository."
+    ],
+    "approval_gates": [],
+    "authorization_boundary": []
+  },
+  "provenance": {
+    "repository": {
+      "revision": "801e5656d975f38e809028e26397c7076f5f3370",
+      "working_tree": "dirty",
+      "diff_ref": "origin/feat/liberal-rework-logging-policy"
+    },
+    "project_map_version": null,
+    "environment": {
+      "host": "WSL",
+      "python": "3.14.7"
+    },
+    "inputs": [],
+    "versions": {
+      "toolkit_before": "0.12.0",
+      "toolkit_after": "0.13.0"
+    },
+    "seeds": []
+  },
+  "execution": {
+    "tools": [
+      "git",
+      "python3",
+      "unittest"
+    ],
+    "commands": [
+      {
+        "id": "baseline-overlay-check",
+        "command": "python3 -B tooling/build-overlay.py --check",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:baseline",
+        "sanitized_summary": "Overlay was current before edits, separating pre-existing state from this change."
+      },
+      {
+        "id": "first-suite-run",
+        "command": "python3 -B -m unittest discover -s tests -v",
+        "capability": "safe_local_validation",
+        "status": "failed",
+        "exit_code": 1,
+        "evidence_ref": "terminal:first-suite-run",
+        "sanitized_summary": "Two contract markers failed: a removed 'duplicate test directories' phrase and prose wrapped across lines hiding 'core entry points' and 'repository-level'."
+      },
+      {
+        "id": "contract-repair-verification",
+        "command": "python3 -B tooling/build-overlay.py && python3 -B tooling/validate-kit.py && python3 -B tooling/validate-kit.py --overlay dist/project-overlay && python3 -B -m unittest tests.test_validate_kit.ValidateKitTests.test_structural_change_discipline_contract_and_cases tests.test_validate_kit.ValidateKitTests.test_required_behavioral_coverage_is_complete",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:contract-repair-verification",
+        "sanitized_summary": "Overlay rebuild, source and overlay validation, structural contract, and required coverage passed for 72 behavioral cases and 46 fixtures."
+      },
+      {
+        "id": "installed-project-smoke",
+        "command": "python3 -B .agent-system/tooling/validate-kit.py --installed-project .",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:installed-project-smoke",
+        "sanitized_summary": "The rebuilt overlay passed installed-project validation in a fresh temporary Git project copy; no generated cache paths were stageable."
+      },
+      {
+        "id": "final-full-suite",
+        "command": "python3 -B -m unittest discover -s tests",
+        "capability": "safe_local_validation",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:final-full-suite",
+        "sanitized_summary": "All 282 unit tests passed."
+      },
+      {
+        "id": "final-diff-inspection",
+        "command": "git diff --check",
+        "capability": "authorized_repository_read",
+        "status": "succeeded",
+        "exit_code": 0,
+        "evidence_ref": "terminal:final-diff-inspection",
+        "sanitized_summary": "Whitespace check passed; intended-change scan found no pycache, pyc, pytest_cache, or editor backup entries."
+      }
+    ],
+    "changed_files": [
+      ".agent-system/SYSTEM.md",
+      ".agent-system/templates/AGENTS.dsml.template.md",
+      ".agent-system/templates/learning.template.yaml",
+      ".agents/skills/analyze-dsml-project/SKILL.md",
+      ".agents/skills/autoresearch/SKILL.md",
+      ".agents/skills/compose-dsml-report/SKILL.md",
+      ".agents/skills/execute-dsml-task/SKILL.md",
+      ".agents/skills/validate-dsml-result/SKILL.md",
+      "VERSION",
+      "tooling/validate-kit.py",
+      "tests/test_validate_kit.py",
+      "evals/cases/behavioral-cases.json",
+      "evals/fixtures/synthetic-fixtures.json",
+      "dist/project-overlay/.agent-system/SYSTEM.md",
+      "dist/project-overlay/.agent-system/VERSION",
+      "dist/project-overlay/.agent-system/manifest.json",
+      "dist/project-overlay/.agent-system/templates/AGENTS.dsml.template.md",
+      "dist/project-overlay/.agent-system/templates/learning.template.yaml",
+      "dist/project-overlay/.agent-system/tooling/validate-kit.py",
+      "dist/project-overlay/.agents/skills/analyze-dsml-project/SKILL.md",
+      "dist/project-overlay/.agents/skills/autoresearch/SKILL.md",
+      "dist/project-overlay/.agents/skills/compose-dsml-report/SKILL.md",
+      "dist/project-overlay/.agents/skills/execute-dsml-task/SKILL.md",
+      "dist/project-overlay/.agents/skills/validate-dsml-result/SKILL.md",
+      ".agent-system/runs/2026-10-07_000000-post-change-repository-hygiene/run.yaml",
+      ".agent-system/runs/2026-10-07_000000-post-change-repository-hygiene/learning.yaml"
+    ]
+  },
+  "results": {
+    "status": "completed",
+    "tests": [
+      {
+        "name": "structural contract and required coverage",
+        "status": "passed",
+        "command_ref": "contract-repair-verification",
+        "sanitized_summary": "Hygiene markers, PROJECT_MAP refresh rule, gitignore rule, shim retention, and small-change no-churn assertions bind to decisive fixture evidence."
+      },
+      {
+        "name": "source toolkit validation",
+        "status": "passed",
+        "command_ref": "contract-repair-verification",
+        "sanitized_summary": "Source valid with 72 behavioral cases and 46 fixtures."
+      },
+      {
+        "name": "generated overlay validation and drift",
+        "status": "passed",
+        "command_ref": "final-diff-inspection",
+        "sanitized_summary": "Overlay files valid; build is current after rebuild."
+      },
+      {
+        "name": "installed-project smoke",
+        "status": "passed",
+        "command_ref": "installed-project-smoke",
+        "sanitized_summary": "Fresh copied project validated in installed-project mode."
+      },
+      {
+        "name": "complete unittest suite",
+        "status": "passed",
+        "command_ref": "final-full-suite",
+        "sanitized_summary": "All 282 tests passed."
+      }
+    ],
+    "metrics": [],
+    "artifacts": [
+      {
+        "kind": "shared agent instruction",
+        "ref": ".agent-system/templates/AGENTS.dsml.template.md",
+        "classification": "public"
+      },
+      {
+        "kind": "system documentation",
+        "ref": ".agent-system/SYSTEM.md",
+        "classification": "public"
+      },
+      {
+        "kind": "behavioral evaluation cases",
+        "ref": "evals/cases/behavioral-cases.json",
+        "classification": "public"
+      },
+      {
+        "kind": "synthetic evaluation fixtures",
+        "ref": "evals/fixtures/synthetic-fixtures.json",
+        "classification": "public"
+      }
+    ],
+    "decision": "not_applicable"
+  },
+  "knowledge": {
+    "verified_facts": [
+      "Hygiene completion-pass prose exists in both runtime template and SYSTEM.md and is asserted by the contract test.",
+      "The positive refactor case now requires the hygiene pass, PROJECT_MAP refresh, gitignore rule, and documented-shim retention with matching fixture evidence.",
+      "The small-change negative case explicitly forbids PROJECT_MAP/README/AGENTS churn and governance machinery.",
+      "Tooling version 0.13.0 is synchronized across VERSION, all five shipped skills, the learning template, and the rebuilt overlay manifest."
+    ],
+    "assumptions": [
+      "Static validation proves the case definitions and expected contracts, not executed agent behavior."
+    ],
+    "remaining_uncertainty": [
+      "Actual agent adherence to the completion pass requires a future LLM-harness eval run; deterministic validation cannot measure execution."
+    ]
+  }
+}

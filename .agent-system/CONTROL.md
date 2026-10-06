@@ -5,7 +5,6 @@
 | I want to... | What to say | Useful controls | Default behavior |
 | --- | --- | --- | --- |
 | Work normally | Ask normally | none | Regular agent work; no workflow ceremony |
-| Set up this repo | `Set up the DS/ML Agent Kit` | usually none | Inspect, configure only stable facts, validate, report readiness |
 | Understand a project | `Analyze this project` | `depth=quick/deep`, `focus=...` | Evidence-based, bounded analysis |
 | Technical report | `Create a technical PDF report` | `iterations=N`, `profile=...`, `focus=...`, `target length=...` | Prompt-adaptive plan, revision, and visual QA |
 | Run model search | `Run autoresearch` | `metric=...`, `max experiments=N`, constraints | Confirmed, bounded experiment loop; final holdout is one-shot at the managed evaluation boundary |
@@ -13,37 +12,6 @@
 
 Ordinary requests stay ordinary. `Fix this bug`, `Explain how this model works`,
 and `Investigate why validation performance dropped` need no toolkit syntax.
-
-## Setup in three steps
-
-1. Copy the contents of `dist/project-overlay/` into the target repository root
-   without overwriting project-owned files.
-2. Start the agent in that repository and say `Set up the DS/ML Agent Kit`.
-3. Read the `READY`, `READY_WITH_WARNINGS`, or `ACTION_REQUIRED` result. After a
-   required fix, say `Recheck DS/ML Agent Kit setup`.
-
-Health check:
-
-```text
-python3 -B .agent-system/tooling/validate-kit.py --installed-project .
-```
-
-Optional maintenance tools:
-```text
-python3 -B .agent-system/tooling/git_preflight.py --project-root .
-python3 -B .agent-system/tooling/review-requests.py --project-root . --force
-```
-Git inspection is read-only by default. Request metadata is sanitized and stored
-under ignored `.agent-system/local/`; normal prompting and setup do not change.
-
-If validation reports missing or inconsistent toolkit-owned runtime files, repair
-from a trusted clean overlay with the same toolkit version. Project-owned files are
-not overwritten:
-
-```text
-python3 -B /path/to/clean-overlay/.agent-system/tooling/onboard-project.py \
-  --installed-project . --repair-runtime /path/to/clean-overlay --recheck
-```
 
 ## Workflow controls
 
@@ -68,18 +36,11 @@ iterations=3
 target length=6-8 pages
 ```
 
-```text
-Create the same report with iterations=3 and target length=8 pages.
-```
-
 ### Lean autoresearch example
 
-The user normally supplies only the research objective and important
-constraints. The agent reconstructs a project-appropriate evaluation contract
-from the request and repository evidence, and generic runtime tooling then
-validates that explicit contract. The forecasting prompts below demonstrate how
-that reconstruction works; forecasting metrics and rolling-origin evaluation
-methods are not hard-coded scientific semantics of the toolkit.
+The user supplies only the objective and constraints; the agent reconstructs a
+project-appropriate evaluation contract from them. Forecasting metrics below
+are example content, not toolkit semantics.
 
 ```text
 Run autoresearch.
@@ -104,10 +65,8 @@ Use an adaptive research loop: later experiments should be informed by earlier r
 Prefer simpler solutions unless additional complexity produces a meaningful improvement.
 ```
 
-The same architecture reconstructs a non-forecasting project from an equally
-lean request — for example a fraud classifier — where the contract ends up with
-a maximizing `AUROC` selection objective, a maximizing reporting metric, and a
-minimizing latency guardrail, with no toolkit source change:
+The same loop reconstructs a non-forecasting project (fraud classifier:
+maximize AUROC, hold latency flat) from an equally lean request:
 
 ```text
 Run autoresearch.
@@ -169,9 +128,13 @@ Reconstruct the executable evaluation contract from this request and repository 
 Show a compact preflight before execution and flag material ambiguity rather than silently choosing different evaluation semantics.
 ```
 
+### Independent validation example
+
 ```text
 Independently validate the claimed lift. focus=split integrity and metric comparability
 ```
+
+### Ordinary bug-fix example
 
 ```text
 Fix this data preprocessing bug and add a regression test.

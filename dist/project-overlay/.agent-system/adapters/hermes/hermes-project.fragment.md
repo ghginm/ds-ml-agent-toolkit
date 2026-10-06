@@ -1,8 +1,8 @@
 # Hermes DS/ML toolkit pointer
 
-Merge the distributed `AGENTS.dsml.template.md` into shared `AGENTS.md` when
-possible. Use `.hermes.md` only for intentional Hermes-specific context because
-it may shadow shared instructions.
+Merge the distributed `.agent-system/templates/AGENTS.dsml.template.md` into
+shared `AGENTS.md` when possible. Use `.hermes.md` only for intentional
+Hermes-specific context because it may shadow shared instructions.
 
 Hermes discovers `.agents/skills/` after an operator runs `hermes skills trust`
 inside the repository and starts a new session. Trust enables discovery; it does

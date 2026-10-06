@@ -1,0 +1,27 @@
+{
+  "schema_version": "0.4",
+  "timestamp": "2026-10-06",
+  "toolkit_version": "0.11.0",
+  "run_ref": ".agent-system/runs/2026-10-06_223000-simplify-first-time-onboarding/run.yaml",
+  "request": {
+    "kind": "implementation",
+    "topics": [
+      "onboarding"
+    ],
+    "deliverable": "overlay-guide"
+  },
+  "routing": {
+    "skill": "dsml-agent-kit-extension",
+    "mode": "develop",
+    "initial_skill": null,
+    "initial_mode": null,
+    "corrected": false
+  },
+  "outcome": {
+    "execution": "completed",
+    "user_outcome": "unknown",
+    "reason_tags": []
+  },
+  "signals": [],
+  "no_reusable_signal_reason": "The existing DS/ML Agent Kit extension workflow already covered documentation relocation, path-consumer updates, deterministic rebuilds, and fresh-project verification."
+}

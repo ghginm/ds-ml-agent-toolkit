@@ -1,6 +1,6 @@
 # DS/ML Agent Skills Toolkit — source repository
 
-This repository develops, tests, versions, and releases the `dsml-agent-kit`. Maintainers work here; data scientists using the toolkit in another repository should start with [`dist/project-overlay/.agent-system/CONTROL.md`](dist/project-overlay/.agent-system/CONTROL.md).
+This repository develops, tests, versions, and releases the `dsml-agent-kit`. Maintainers work here; data scientists using the toolkit in another repository should start with [`dist/project-overlay/DSML_AGENT_KIT.md`](dist/project-overlay/DSML_AGENT_KIT.md).
 
 The maintained core remains three harness-neutral, progressively disclosed skills:
 
@@ -22,7 +22,7 @@ dist/project-overlay/
 target DS/ML/AML repository
 ```
 
-The source tree includes evals, tests, toolkit-development policy, maintenance history, and build tooling. The overlay contains released runtime skills, three explicit workflow contracts, `CONTROL.md`, `SYSTEM.md`, the small project template, thin adapters, and consumed schemas/tooling. The build uses an explicit copy manifest and writes hashes to `.agent-system/manifest.json`; source validation fails when checked-in distribution content drifts.
+The source tree includes evals, tests, toolkit-development policy, maintenance history, and build tooling. The overlay exposes only `DSML_AGENT_KIT.md` at its visible root; released runtime skills live under `.agents/`, while controls, templates, thin adapters, workflow contracts, schemas, and tooling live under `.agent-system/`. The build uses an explicit copy manifest and writes hashes to `.agent-system/manifest.json`; source validation fails when checked-in distribution content drifts.
 
 ## Repository structure
 
@@ -86,7 +86,7 @@ Capability decisions remain in the reviewed capability policy, not in reusable s
 
 ## Setup lifecycle
 
-The deployed user starts with `.agent-system/CONTROL.md` and says `Set up the DS/ML Agent Kit`. Setup routes through `analyze-dsml-project` orientation mode. The deployed `.agent-system/tooling/onboard-project.py` helper reports transient repository detections, preserves project-owned state, applies conservative capability semantics, invokes installed-project validation, and writes `.agent-system/onboarding-status.md`. If manifest-owned runtime files drift, `--repair-runtime /path/to/trusted-clean-overlay` restores only declared files from a validated same-version overlay; it never deletes or overwrites project-owned paths. `.agent-system/SYSTEM.md` documents architecture and the three contracts in `.agent-system/workflows/`; neither file duplicates skill procedure.
+The deployed user starts with `DSML_AGENT_KIT.md` and says `Set up the DS/ML Agent Kit for this project.` Setup routes through `analyze-dsml-project` orientation mode. The deployed `.agent-system/tooling/onboard-project.py` helper reports transient repository detections, preserves project-owned state, applies conservative capability semantics, invokes installed-project validation, and writes `.agent-system/onboarding-status.md`. If manifest-owned runtime files drift, `--repair-runtime /path/to/trusted-clean-overlay` restores only declared files from a validated same-version overlay; it never deletes or overwrites project-owned paths. A newer distribution upgrades in place with `--upgrade-from /path/to/new-distribution`: it classifies the version state (fresh/repair/upgrade/downgrade), replaces only manifest-owned files, removes obsolete toolkit-owned files, refreshes the managed toolkit block in project instructions exactly once, and preserves project-owned state; older distributions never silently downgrade. `.agent-system/CONTROL.md` and `.agent-system/SYSTEM.md` remain advanced internal references; neither duplicates skill procedure.
 
 Behavioral onboarding cases live in `evals/cases/behavioral-cases.json`; deterministic first-run, preservation, failure, permission, validation-unavailable, recheck, and synthetic end-to-end coverage lives in `tests/test_onboarding.py`. Change maintained source files first, rebuild the overlay, then validate source, overlay, and installed-project behavior. Generated onboarding status and project configuration belong to target projects and are intentionally absent from the clean overlay.
 
@@ -110,6 +110,8 @@ toolkit automatically. See [`.agent-system/docs/LEARNING_LOOP.md`](.agent-system
   diverged branches are never stashed, reset, merged, or rebased automatically.
 - Git/SSH authentication questions appear only after automatic configuration and
   public ssh-agent fingerprint diagnostics cannot resolve a relevant failure.
+- Authorized commits default to Conventional Commits, include only the logical task
+  change, and never imply push authorization.
 - Autoresearch retains its stronger Git requirement and worktree isolation.
 
 ## Validation and release
@@ -146,7 +148,7 @@ python3 -B .agent-system/tooling/validate-kit.py --installed-project .
 
 Overlay validation rejects undeclared files and corrupted released resources. Installed-project validation hashes only toolkit-owned files, requires the three core skills and bundled specialized skills including controlled report composition, validates optional project configuration and learning records, allows project-specific skills, and ignores unrelated application code, documentation, markers, and symlinks.
 
-Before release, manually inspect `dist/project-overlay/` as the complete user package. Confirm that it contains no source README, evals, tests, development runs, active source policy, or other maintenance artifacts.
+Before release, manually inspect `dist/project-overlay/` as the complete user package. Confirm that `DSML_AGENT_KIT.md` is its only visible root entry and that it contains no source README, root instruction template, root adapters directory, evals, tests, development runs, active source policy, or other maintenance artifacts.
 
 ## Versioning
 

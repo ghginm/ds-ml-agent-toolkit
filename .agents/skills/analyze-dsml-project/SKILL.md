@@ -4,7 +4,7 @@ description: Inspect an existing DS/ML/AML project for onboarding, data-to-decis
 license: MIT
 metadata:
   author: "ghgin, Hermes Agent"
-  version: "0.9.0"
+  version: "0.14.0"
 ---
 
 # Analyze DS/ML Project
@@ -53,6 +53,8 @@ question:
 For “Recheck DS/ML Agent Kit onboarding,” rerun the helper with `--recheck`, reassess only current configuration/runtime/instruction/activation state, and refresh the status. Do not regenerate a sound project map or replace deliberate project values without material evidence.
 
 For an explicit runtime-integrity repair, run the helper from a trusted clean overlay with the same toolkit version and pass `--repair-runtime <clean-overlay> --recheck`. Restore only manifest-owned files; never use repair to overwrite project configuration, runs, maps, instruction merges, or project-specific skills.
+
+For a cross-version upgrade, run the helper from a trusted newer distribution with `--upgrade-from <new-distribution> --recheck`. It classifies the version state (fresh install, same-version repair, upgrade, or downgrade), replaces or removes only toolkit-owned manifest files, refreshes the toolkit-managed section inside project instructions exactly once, and preserves project configuration, runs, maps, user-written instruction content, and project-specific skills. Never silently downgrade; an older distribution requires explicit downgrade intent.
 
 If the helper is unavailable, perform the same steps directly from the shipped templates and run `python3 -B .agent-system/tooling/validate-kit.py --installed-project .`. Optional `null` values do not block safe work; ask only about a material security, cost, data, or recurring-authorization boundary that repository evidence cannot resolve.
 
